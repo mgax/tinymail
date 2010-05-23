@@ -21,10 +21,20 @@ class tinymailAppDelegate(NSObject):
     def applicationWillTerminate_(self, notification):
         self.imap_server.cleanup()
 
-    def _folder_selected(self, name):
-        messages = ([] if name is None else [{'sender': name,
-                                              'subject': 'asdf'}])
-        self.message_listing.update_messages(messages)
+    def _folder_selected(self, mbox_name):
+        update_messages = self.message_listing.update_messages
+
+        if mbox_name is None:
+            update_messages([])
+            return
+
+        messages = []
+        for message in self.imap_server.get_messages_in_mailbox(mbox_name):
+            messages.append({
+                'subject': message['Subject'],
+                'sender': message['From'],
+            })
+        update_messages(messages)
 
 def connect_to_imap_server():
     import os
