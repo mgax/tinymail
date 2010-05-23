@@ -9,11 +9,13 @@ class FolderListingItem(NSObject):
 
 class FolderListingDataSource(NSObject):
     @classmethod
-    def sourceWithFolderPaths_(cls, folder_paths):
+    def sourceWithFolderPaths_selectionChanged_(cls,
+            folder_paths, selection_changed):
         s = cls.new()
         #s.folder_paths = folder_paths
         s.items = [FolderListingItem.itemWithString_(p).retain()
                    for p in folder_paths]
+        s.selection_changed = selection_changed
         return s
 
     def outlineView_numberOfChildrenOfItem_(self, outline_view, item):
@@ -50,14 +52,13 @@ class FolderListingDataSource(NSObject):
     def outlineViewSelectionDidChange_(self, notification):
         outline_view = notification.object()
         row = outline_view.selectedRow()
-        if row == -1:
-            print "[empty selection]"
-        else:
-            print outline_view.itemAtRow_(row).value
+        new_value = (None if row == -1 else outline_view.itemAtRow_(row).value)
+        self.selection_changed(new_value)
 
-def set_up_folder_listing(imap_conn, folders_tree):
+def set_up_folder_listing(imap_conn, folders_tree, selection_changed):
     from tinymail.ui.folder_listing import FolderListingDataSource
     folder_paths = list(imap_conn.get_mailboxes())
-    ds = FolderListingDataSource.sourceWithFolderPaths_(folder_paths)
+    ds = FolderListingDataSource.sourceWithFolderPaths_selectionChanged_(
+                folder_paths, selection_changed)
     folders_tree.setDataSource_(ds)
     folders_tree.setDelegate_(ds)
