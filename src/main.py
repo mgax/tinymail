@@ -4,6 +4,6 @@ import AppKit
 
 from PyObjCTools import AppHelper
 
-import app_delegate
+import tinymail.ui.app_delegate
 
 AppHelper.runEventLoop()

@@ -46,3 +46,10 @@ class FolderListingDataSource(NSObject):
         #print ("outlineView_shouldEditTableColumn_item_(%r, %r) called"
         #       % (tableColumn, item))
         return False
+
+def set_up_folder_listing(imap_conn, folders_tree):
+    from tinymail.ui.folder_listing import FolderListingDataSource
+    folder_paths = list(imap_conn.get_mailboxes())
+    ds = FolderListingDataSource.sourceWithFolderPaths_(folder_paths)
+    folders_tree.setDataSource_(ds)
+    folders_tree.setDelegate_(ds)
