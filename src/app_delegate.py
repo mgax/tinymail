@@ -6,17 +6,14 @@ class tinymailAppDelegate(NSObject):
     window = objc.IBOutlet()
     foldersPane = objc.IBOutlet()
 
-    def applicationDidFinishLaunching_(self, sender):
-        #imap_trial()
+    def applicationDidFinishLaunching_(self, notification):
+        self.imap_server = connect_to_imap_server()
+        set_up_folder_listing(self.imap_server, self.foldersPane)
 
-        # set up folder listing
-        from tinymail.ui.folder_listing import FolderListingDataSource
-        folder_paths = ['asdf', 'qewr']
-        s = FolderListingDataSource.sourceWithFolderPaths_(folder_paths)
-        self.foldersPane.setDataSource_(s)
-        self.foldersPane.setDelegate_(s)
+    def applicationWillTerminate_(self, notification):
+        self.imap_server.cleanup()
 
-def imap_trial():
+def connect_to_imap_server():
     import os
     from os import path
     import json
@@ -25,7 +22,11 @@ def imap_trial():
         cfg_data = json.loads(f.read()).items()
 
     from tinymail.maildata.imapconn import ImapServerConnection
-    sc = ImapServerConnection(**dict( (str(k),v) for (k,v) in cfg_data ))
-    for name in sc.get_mailboxes():
-        print name
-    sc.cleanup()
+    return ImapServerConnection(**dict( (str(k),v) for (k,v) in cfg_data ))
+
+def set_up_folder_listing(imap_conn, folders_tree):
+    from tinymail.ui.folder_listing import FolderListingDataSource
+    folder_paths = list(imap_conn.get_mailboxes())
+    ds = FolderListingDataSource.sourceWithFolderPaths_(folder_paths)
+    folders_tree.setDataSource_(ds)
+    folders_tree.setDelegate_(ds)
