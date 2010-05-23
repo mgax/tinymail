@@ -1,10 +1,20 @@
 import traceback
 
-from Foundation import NSObject
+from Foundation import NSObject, objc
 
 class tinymailAppDelegate(NSObject):
+    window = objc.IBOutlet()
+    foldersPane = objc.IBOutlet()
+
     def applicationDidFinishLaunching_(self, sender):
         #imap_trial()
+
+        # set up folder listing
+        from tinymail.ui.folder_listing import FolderListingDataSource
+        folder_paths = ['asdf', 'qewr']
+        s = FolderListingDataSource.sourceWithFolderPaths_(folder_paths)
+        self.foldersPane.setDataSource_(s)
+        self.foldersPane.setDelegate_(s)
 
 def imap_trial():
     import os
