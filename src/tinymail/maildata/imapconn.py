@@ -43,10 +43,24 @@ class ImapServerConnection(object):
             preamble, headers = fragment
             assert 'BODY[HEADER]' in preamble, 'bad preamble'
 
-            yield email.message_from_string(headers)
+            message_id = preamble.split(' ', 1)[0]
+            mime_headers = email.message_from_string(headers)
+
+            yield message_id, mime_headers
 
             closing = next(data, None)
             assert closing == ')', 'bad closing'
+
+    def get_full_message(self, mbox_name, message_id):
+        status, count = self.conn.select(mbox_name, readonly=True)
+        assert status == 'OK'
+
+        status, data = self.conn.fetch(message_id, '(RFC822)')
+        assert status == 'OK'
+        assert len(data) == 2 and data[1] == ')'
+        assert isinstance(data[0], tuple) and len(data[0]) == 2
+
+        return email.message_from_string(data[0][1])
 
     def cleanup(self):
         self.conn.shutdown()
