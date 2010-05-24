@@ -7,9 +7,9 @@ class MessageListingDelegate(NSObject):
 
     def attach_to_view(self, table_view, selection_changed):
         col0, col1 = table_view.tableColumns()
-        col0.setIdentifier_('sender')
+        col0.setIdentifier_('From')
         col0.headerCell().setTitle_("Sender")
-        col1.setIdentifier_('subject')
+        col1.setIdentifier_('Subject')
         col1.headerCell().setTitle_("Title")
 
         table_view.setDelegate_(self)
@@ -25,7 +25,7 @@ class MessageListingDelegate(NSObject):
         return len(self.messages)
 
     def tableView_objectValueForTableColumn_row_(self, table_view, col, row):
-        return self.messages[row][col.identifier()]
+        return self.messages[row].mime[col.identifier()]
 
     def tableView_shouldSelectTableColumn_(self, table_view, col):
         return False

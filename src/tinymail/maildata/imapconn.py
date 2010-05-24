@@ -1,5 +1,4 @@
 import imaplib
-import email
 import re
 
 list_pattern = re.compile(r'^\((?P<flags>[^\)]*)\) '
@@ -7,12 +6,9 @@ list_pattern = re.compile(r'^\((?P<flags>[^\)]*)\) '
                           r'(?P<name>.*)$')
 
 class ImapServerConnection(object):
-    def __init__(self, host, login_name, login_pass):
-        self.conn = imaplib.IMAP4_SSL(host)
-        #print "connected"
-        #print self.conn.capabilities
-        self.conn.login(login_name, login_pass)
-        #print "logged in"
+    def __init__(self, config):
+        self.conn = imaplib.IMAP4_SSL(config['host'])
+        self.conn.login(config['login_name'], config['login_pass'])
 
     def get_mailboxes(self):
         status, entries = self.conn.list()
@@ -44,7 +40,7 @@ class ImapServerConnection(object):
             assert 'BODY[HEADER]' in preamble, 'bad preamble'
 
             message_id = preamble.split(' ', 1)[0]
-            mime_headers = email.message_from_string(headers)
+            mime_headers = headers
 
             yield message_id, mime_headers
 
@@ -60,8 +56,7 @@ class ImapServerConnection(object):
         assert len(data) == 2 and data[1] == ')'
         assert isinstance(data[0], tuple) and len(data[0]) == 2
 
-        return email.message_from_string(data[0][1])
+        return data[0][1]
 
     def cleanup(self):
         self.conn.shutdown()
-        print "finished"
