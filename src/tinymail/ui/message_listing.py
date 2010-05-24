@@ -1,10 +1,9 @@
 from Foundation import NSObject
-from Foundation import NSObject
 
-class MessageListingDataSource(NSObject):
+class MessageListingDelegate(NSObject):
     def init(self):
         self.messages = []
-        return super(MessageListingDataSource, self).init()
+        return super(MessageListingDelegate, self).init()
 
     def attach_to_view(self, table_view, selection_changed):
         col0, col1 = table_view.tableColumns()
@@ -37,5 +36,5 @@ class MessageListingDataSource(NSObject):
     def tableViewSelectionDidChange_(self, notification):
         table_view = notification.object()
         row = table_view.selectedRow()
-        new_value = None if row == -1 else self.messages[row]
+        new_value = (None if row == -1 else self.messages[row])
         self.selection_changed(new_value)

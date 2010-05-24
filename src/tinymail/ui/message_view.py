@@ -1,6 +1,6 @@
 from Foundation import NSObject, NSURL, NSString, NSISOLatin1StringEncoding
 
-class MessageView(NSObject):
+class MessageViewDelegate(NSObject):
     def attach_to_view(self, web_view):
         self.web_view = web_view
 

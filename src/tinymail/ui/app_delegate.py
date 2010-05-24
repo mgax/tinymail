@@ -3,9 +3,10 @@ import traceback
 from Foundation import NSObject, objc
 
 from tinymail.maildata.imapconn import ImapServerConnection
-from folder_listing import set_up_folder_listing
-from message_listing import MessageListingDataSource
-from message_view import MessageView
+
+from folder_listing import FolderListingDelegate
+from message_listing import MessageListingDelegate
+from message_view import MessageViewDelegate
 
 class tinymailAppDelegate(NSObject):
     window = objc.IBOutlet()
@@ -15,16 +16,22 @@ class tinymailAppDelegate(NSObject):
 
     def applicationDidFinishLaunching_(self, notification):
         self.imap_server = connect_to_imap_server()
+        self._set_up_ui()
 
-        set_up_folder_listing(self.imap_server, self.foldersPane,
-                              self._folder_selected)
+    def _set_up_ui(self):
+        self.folder_listing = FolderListingDelegate.new()
+        self.folder_listing.attach_to_view(self.foldersPane,
+                                           self._folder_selected)
 
-        self.message_listing = MessageListingDataSource.new()
+        self.message_listing = MessageListingDelegate.new()
         self.message_listing.attach_to_view(self.messagesPane,
                                             self._message_selected)
 
-        self.message_view = MessageView.new()
+        self.message_view = MessageViewDelegate.new()
         self.message_view.attach_to_view(self.messageView)
+
+        folder_names = list(self.imap_server.get_mailboxes())
+        self.folder_listing.update_folders(folder_names)
 
     def applicationWillTerminate_(self, notification):
         self.imap_server.cleanup()
