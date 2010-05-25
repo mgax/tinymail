@@ -30,23 +30,21 @@ class tinymailAppDelegate(NSObject):
         self.message_view = MessageViewDelegate.new()
         self.message_view.attach_to_view(self.messageView)
 
-        folder_names = list(self.the_account.folders())
-        self.folder_listing.update_folders(folder_names)
+        self.the_account.call_with_folders(self.folder_listing.update_folders)
 
     def applicationWillTerminate_(self, notification):
         self.the_account.cleanup()
 
-    def _folder_selected(self, mbox_name):
+    def _folder_selected(self, folder):
         update_messages = self.message_listing.update_messages
 
-        if mbox_name is None:
+        if folder is None:
             update_messages([])
-            return
+        else:
+            folder.call_with_messages(update_messages)
 
-        update_messages(list(self.the_account.messages_in_folder(mbox_name)))
-
-    def _message_selected(self, message_handle):
-        self.message_view.show_message(message_handle)
+    def _message_selected(self, message):
+        self.message_view.show_message(message)
 
 def read_config():
     import os

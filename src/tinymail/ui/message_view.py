@@ -6,11 +6,14 @@ class MessageViewDelegate(NSObject):
 
     def show_message(self, message):
         if message is None:
-            str_data = ""
+            self._update_view_with_string("")
         else:
-            message.ensure_loaded()
-            str_data = message.mime.as_string()
+            message.call_when_loaded(self._display_message)
 
+    def _display_message(self, message):
+        self._update_view_with_string(message.mime.as_string())
+
+    def _update_view_with_string(self, str_data):
         ns_str = NSString.stringWithString_(str_data.decode('latin-1'))
         data = ns_str.dataUsingEncoding_(NSISOLatin1StringEncoding)
         url = NSURL.URLWithString_('about:blank')

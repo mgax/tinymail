@@ -2,9 +2,9 @@ from Foundation import NSObject
 
 class FolderListingItem(NSObject):
     @classmethod
-    def itemWithString_(cls, value):
+    def itemWithFolder_(cls, folder):
         item = FolderListingItem.new()
-        item.value = value
+        item.folder = folder
         return item
 
 class FolderListingDelegate(NSObject):
@@ -12,11 +12,11 @@ class FolderListingDelegate(NSObject):
         self.items = []
         return super(FolderListingDelegate, self).init()
 
-    def update_folders(self, folder_names):
+    def update_folders(self, folders):
         for item in self.items:
             item.release()
-        self.items = [FolderListingItem.itemWithString_(p).retain()
-                      for p in folder_names]
+        self.items = [FolderListingItem.itemWithFolder_(f).retain()
+                      for f in folders]
         self.outline_view.reloadData()
 
     def attach_to_view(self, outline_view, selection_changed):
@@ -41,7 +41,7 @@ class FolderListingDelegate(NSObject):
     def outlineView_objectValueForTableColumn_byItem_(self, outline_view,
                                                       tableColumn, item):
         assert isinstance(item, FolderListingItem)
-        return item.value
+        return item.folder.imap_name
 
     def outlineView_shouldEditTableColumn_item_(self, outline_view,
                                                 tableColumn, item):
@@ -50,5 +50,8 @@ class FolderListingDelegate(NSObject):
     def outlineViewSelectionDidChange_(self, notification):
         outline_view = notification.object()
         row = outline_view.selectedRow()
-        new_value = (None if row == -1 else outline_view.itemAtRow_(row).value)
+        if row == -1:
+            new_value = None
+        else:
+            new_value = outline_view.itemAtRow_(row).folder
         self.selection_changed(new_value)
