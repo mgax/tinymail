@@ -60,3 +60,15 @@ class ImapServerConnection(object):
 
     def cleanup(self):
         self.conn.shutdown()
+
+def get_imap_loop(config):
+    def run_loop(in_queue):
+        connection = ImapServerConnection(config)
+        while True:
+            cmd = in_queue.get()
+            if cmd is None:
+                break
+            else:
+                cmd(connection)
+
+    return run_loop
