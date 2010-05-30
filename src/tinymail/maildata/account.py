@@ -4,23 +4,20 @@ from imapconn import get_imap_loop
 from async import spin_off, assert_main_thread, MailDataOp
 
 class Account(object):
-    def __init__(self, config):
+    def __init__(self, reg, config):
+        self.reg = reg
         self.remote_do, self.remote_cleanup = spin_off(get_imap_loop(config))
+        self.gid = 'account'
         self.folders = None
 
-    def call_with_folders(self, callback):
-        @assert_main_thread
-        def done():
-            callback(self.folders)
-
-        if self.folders is not None:
-            done()
-        else:
-            self.remote_do(ListFoldersOp(account=self, callback=done))
+    def update_if_needed(self):
+        if self.folders is None:
+            self.remote_do(ListFoldersOp(account=self))
 
     @assert_main_thread
     def _imap_folder_list_loaded(self, imap_folders):
-        self.folders = [Folder(imap_name, self) for imap_name in imap_folders]
+        self.folders = [Folder(self, imap_name) for imap_name in imap_folders]
+        self.reg.notify((self, 'folders_updated'), account=self)
 
     def cleanup(self):
         self.remote_cleanup()
@@ -31,25 +28,20 @@ class ListFoldersOp(MailDataOp):
 
     def report(self, result):
         self.account._imap_folder_list_loaded(result)
-        self.callback()
 
 
 class Folder(object):
-    def __init__(self, imap_name, account):
-        self.imap_name = imap_name
+    def __init__(self, account, imap_name):
         self.account = account
+        self.reg = account.reg
         self.remote_do = account.remote_do
+        self.imap_name = imap_name
+        self.gid = account.gid + '/' + imap_name
         self.messages = None
 
-    def call_with_messages(self, callback):
-        @assert_main_thread
-        def done():
-            callback(self.messages)
-
-        if self.messages is not None:
-            done()
-        else:
-            self.remote_do(MessagesInFolderOp(folder=self, callback=done))
+    def update_if_needed(self):
+        if self.messages is None:
+            self.remote_do(MessagesInFolderOp(folder=self))
 
     @assert_main_thread
     def _imap_message_list_loaded(self, imap_messages):
@@ -58,6 +50,7 @@ class Folder(object):
             mime_message = email.message_from_string(mime_headers)
             messages.append(Message(mime_message, imap_msg_id, self))
         self.messages = messages
+        self.reg.notify((self, 'messages_updated'), folder=self)
 
 class MessagesInFolderOp(MailDataOp):
     def perform(self, imap):
@@ -65,31 +58,27 @@ class MessagesInFolderOp(MailDataOp):
 
     def report(self, imap_messages):
         self.folder._imap_message_list_loaded(imap_messages)
-        self.callback()
 
 
 class Message(object):
     def __init__(self, headers, imap_id, folder):
-        self.state = 'headers'
-        self.mime = headers
-        self.imap_id = imap_id
         self.folder = folder
         self.remote_do = folder.remote_do
+        self.reg = folder.reg
+        self.imap_id = imap_id
+        self.gid = folder.gid + '/' + imap_id
+        self.state = 'headers'
+        self.mime = headers
 
-    def call_when_loaded(self, callback):
-        @assert_main_thread
-        def done():
-            callback(self)
-
-        if self.state == 'full':
-            done()
-        else:
-            self.remote_do(LoadMessageOp(message=self, callback=done))
+    def update_if_needed(self):
+        if self.state != 'full':
+            self.remote_do(LoadMessageOp(message=self))
 
     @assert_main_thread
     def _imap_message_loaded(self, imap_message):
         self.mime = email.message_from_string(imap_message)
         self.state = 'full'
+        self.reg.notify((self, 'mime_updated'), message=self)
 
 class LoadMessageOp(MailDataOp):
     def perform(self, imap):
@@ -98,4 +87,3 @@ class LoadMessageOp(MailDataOp):
 
     def report(self, message_data):
         self.message._imap_message_loaded(message_data)
-        self.callback()

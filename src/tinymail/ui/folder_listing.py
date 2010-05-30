@@ -8,22 +8,28 @@ class FolderListingItem(NSObject):
         return item
 
 class FolderListingDelegate(NSObject):
+    @classmethod
+    def create(cls, reg, outline_view, account):
+        self = cls.new()
+        self.reg = reg
+        self.outline_view = outline_view
+        outline_view.setDataSource_(self)
+        outline_view.setDelegate_(self)
+        self.reg.subscribe((account, 'folders_updated'),
+                           self.handle_folders_updated)
+        sel = self.handle_folders_updated
+        return self
+
     def init(self):
         self.items = []
         return super(FolderListingDelegate, self).init()
 
-    def update_folders(self, folders):
+    def handle_folders_updated(self, account):
         for item in self.items:
             item.release()
         self.items = [FolderListingItem.itemWithFolder_(f).retain()
-                      for f in folders]
+                      for f in account.folders]
         self.outline_view.reloadData()
-
-    def attach_to_view(self, outline_view, selection_changed):
-        outline_view.setDataSource_(self)
-        outline_view.setDelegate_(self)
-        self.outline_view = outline_view
-        self.selection_changed = selection_changed
 
     def outlineView_numberOfChildrenOfItem_(self, outline_view, item):
         assert item is None
@@ -54,4 +60,5 @@ class FolderListingDelegate(NSObject):
             new_value = None
         else:
             new_value = outline_view.itemAtRow_(row).folder
-        self.selection_changed(new_value)
+
+        self.reg.notify('ui.folder_selected', folder=new_value)

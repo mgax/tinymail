@@ -1,23 +1,49 @@
 from Foundation import NSObject
 
 class MessageListingDelegate(NSObject):
-    def init(self):
-        self.messages = []
-        return super(MessageListingDelegate, self).init()
+    @classmethod
+    def create(cls, reg, table_view):
+        self = cls.new()
+        self.reg = reg
+        self.table_view = table_view
+        table_view.setDelegate_(self)
+        table_view.setDataSource_(self)
+        self._set_up_columns()
+        self.reg.subscribe('ui.folder_selected', self.handle_folder_selected)
+        return self
 
-    def attach_to_view(self, table_view, selection_changed):
-        col0, col1 = table_view.tableColumns()
+    def _set_up_columns(self):
+        col0, col1 = self.table_view.tableColumns()
         col0.setIdentifier_('From')
         col0.headerCell().setTitle_("Sender")
         col1.setIdentifier_('Subject')
         col1.headerCell().setTitle_("Title")
 
-        table_view.setDelegate_(self)
-        table_view.setDataSource_(self)
-        self.table_view = table_view
-        self.selection_changed = selection_changed
+    def init(self):
+        self.messages = []
+        self._folder = None
+        return super(MessageListingDelegate, self).init()
 
-    def update_messages(self, messages):
+    def handle_folder_selected(self, folder):
+        if self._folder is not None:
+            self.reg.unsubscribe((self._folder, 'messages_updated'),
+                                 self.handle_messages_updated)
+
+        self._folder = folder
+        if self._folder is None:
+            self.messages_updated([])
+            return
+
+        self.messages_updated(self._folder.messages or [])
+        self.reg.subscribe((self._folder, 'messages_updated'),
+                           self.handle_messages_updated)
+        self._folder.update_if_needed()
+
+    def handle_messages_updated(self, folder):
+        assert folder is self._folder
+        self.messages_updated(folder.messages)
+
+    def messages_updated(self, messages):
         self.messages = messages
         self.table_view.reloadData()
 
@@ -37,4 +63,5 @@ class MessageListingDelegate(NSObject):
         table_view = notification.object()
         row = table_view.selectedRow()
         new_value = (None if row == -1 else self.messages[row])
-        self.selection_changed(new_value)
+
+        self.reg.notify('ui.message_selected', message=new_value)
