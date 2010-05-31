@@ -59,6 +59,7 @@ class AccountTest(unittest.TestCase):
         while True:
             if self.op_queue:
                 op = self.op_queue.pop()
+                op.is_queued(self.reg)
                 op(self.server)
             elif self.mainthread_queue:
                 callback = self.mainthread_queue.pop()

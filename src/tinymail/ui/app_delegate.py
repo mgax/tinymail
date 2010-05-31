@@ -8,12 +8,14 @@ from tinymail.maildata.events import Registry
 from folder_listing import FolderListingDelegate
 from message_listing import MessageListingDelegate
 from message_view import MessageViewDelegate
+from activity_view import ActivityDelegate
 
 class tinymailAppDelegate(NSObject):
     window = objc.IBOutlet()
     foldersPane = objc.IBOutlet()
     messagesPane = objc.IBOutlet()
     messageView = objc.IBOutlet()
+    activityTable = objc.IBOutlet()
 
     def applicationDidFinishLaunching_(self, notification):
         self.reg = Registry()
@@ -26,6 +28,7 @@ class tinymailAppDelegate(NSObject):
                                      self.the_account)
         MessageListingDelegate.create(self.reg, self.messagesPane)
         MessageViewDelegate.create(self.reg, self.messageView)
+        ActivityDelegate.create(self.reg, self.activityTable)
 
     def applicationWillTerminate_(self, notification):
         self.the_account.cleanup()

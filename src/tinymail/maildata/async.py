@@ -5,6 +5,8 @@ import Queue
 
 from Foundation import objc, NSObject, NSAutoreleasePool
 
+from imapserver import get_imap_loop
+
 class MainThreadHelper(NSObject):
     def onMainThread(self):
         self.func()
@@ -36,7 +38,8 @@ def assert_main_thread(f):
 
     return wrapper
 
-def spin_off(run_loop):
+def connect_to_server(reg, config):
+    run_loop = get_imap_loop(config)
     in_queue = Queue.Queue()
     thread = threading.Thread(target=run_loop, args=(in_queue,))
     thread.start()
@@ -45,17 +48,40 @@ def spin_off(run_loop):
         in_queue.put(None)
         thread.join()
 
-    return in_queue.put, quit
+    def remote_do(op):
+        op.is_queued(reg)
+        in_queue.put(op)
+
+    return remote_do, quit
 
 class MailDataOp(object):
     """ Base class for potentially-long-running operations. """
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
+        self.state_msg = 'queued'
+
+    def is_queued(self, reg):
+        self.reg = reg
+        self.reg.notify('maildata.op_queued', op=self)
+        self.state_update('queued')
+
+    @assert_main_thread
+    def state_update(self, msg):
+        self.state_msg = msg
+        self.reg.notify('maildata.op_status', op=self)
+
+    @assert_main_thread
+    def report_on_main(self, result):
+        self.state_update('reporting')
+        self.report(result)
+        self.state_update('done')
+        self.reg.notify('maildata.op_finished', op=self)
 
     def __call__(self, imap):
         """ To be called by IMAP connection thread """
+        main_thread(self.state_update, 'working')
         result = self.perform(imap)
-        main_thread(self.report, result)
+        main_thread(self.report_on_main, result)
 
     def perform(self, imap):
         """

@@ -1,5 +1,4 @@
-from imapserver import get_imap_loop
-from async import spin_off, assert_main_thread, MailDataOp
+from async import assert_main_thread, connect_to_server, MailDataOp
 from folder import Folder
 
 
@@ -11,7 +10,8 @@ class Account(object):
         self._configure(config)
 
     def _configure(self, config):
-        self.remote_do, self.remote_cleanup = spin_off(get_imap_loop(config))
+        remote = connect_to_server(self.reg, config)
+        (self.remote_do, self.remote_cleanup) = remote
 
     def update_if_needed(self):
         if self._needs_update:
