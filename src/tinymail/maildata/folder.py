@@ -8,18 +8,18 @@ class Folder(object):
         self.reg = account.reg
         self.remote_do = account.remote_do
         self.imap_name = imap_name
-        self.messages = None
+        self.messages = []
+        self._needs_update = True
 
     def update_if_needed(self):
-        if self.messages is None:
+        if self._needs_update:
+            self._needs_update = False
             self.remote_do(MessagesInFolderOp(folder=self))
 
     @assert_main_thread
     def _imap_message_list_loaded(self, imap_messages):
-        messages = []
-        for imap_msg_id, mime_headers in imap_messages:
-            messages.append(Message(mime_headers, imap_msg_id, self))
-        self.messages = messages
+        self.messages[:] = [Message(self, mime_headers, imap_msg_id)
+                            for imap_msg_id, mime_headers in imap_messages]
         self.reg.notify((self, 'messages_updated'), folder=self)
 
 class MessagesInFolderOp(MailDataOp):

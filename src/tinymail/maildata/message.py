@@ -3,7 +3,7 @@ from async import assert_main_thread, MailDataOp
 
 
 class Message(object):
-    def __init__(self, raw_headers, imap_id, folder):
+    def __init__(self, folder, raw_headers, imap_id):
         self.folder = folder
         self.remote_do = folder.remote_do
         self.reg = folder.reg

@@ -28,6 +28,9 @@ class ImapServerConnection(object):
         assert status == 'OK'
         message_ids = data[0].split()
 
+        if not message_ids:
+            return
+
         # we need to get FLAGS too, otherwise messages are marked as read
         status, data = self.conn.fetch(','.join(message_ids),
                                        '(BODY.PEEK[HEADER] FLAGS)')

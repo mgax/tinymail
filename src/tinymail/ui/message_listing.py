@@ -34,7 +34,7 @@ class MessageListingDelegate(NSObject):
             self.messages_updated([])
             return
 
-        self.messages_updated(self._folder.messages or [])
+        self.messages_updated(self._folder.messages)
         self.reg.subscribe((self._folder, 'messages_updated'),
                            self.handle_messages_updated)
         self._folder.update_if_needed()
