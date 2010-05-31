@@ -7,7 +7,6 @@ class Account(object):
     def __init__(self, reg, config):
         self.reg = reg
         self.remote_do, self.remote_cleanup = spin_off(get_imap_loop(config))
-        self.gid = 'account'
         self.folders = None
 
     def update_if_needed(self):
@@ -36,7 +35,6 @@ class Folder(object):
         self.reg = account.reg
         self.remote_do = account.remote_do
         self.imap_name = imap_name
-        self.gid = account.gid + '/' + imap_name
         self.messages = None
 
     def update_if_needed(self):
@@ -66,7 +64,6 @@ class Message(object):
         self.remote_do = folder.remote_do
         self.reg = folder.reg
         self.imap_id = imap_id
-        self.gid = folder.gid + '/' + imap_id
         self.state = 'headers'
         self.mime = headers
 
