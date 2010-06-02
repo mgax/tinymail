@@ -14,5 +14,21 @@ class GetMailboxesTest(unittest.TestCase):
                               r'(\HasNoChildren) "." "folder two"']
 
         server = TestServer(StubImapConnection())
-        out = list(server.get_mailboxes())
+        out = server.get_mailboxes()
         self.assertEqual(out, ['folder one', 'folder two'])
+
+    def test_error_response(self):
+        class StubImapConnection(object):
+            def list(self):
+                return "anything that's not 'OK'", ""
+
+        server = TestServer(StubImapConnection())
+        self.assertRaises(AssertionError, server.get_mailboxes)
+
+    def test_malformed_response(self):
+        class StubImapConnection(object):
+            def list(self):
+                return "OK", ['blah blah']
+
+        server = TestServer(StubImapConnection())
+        self.assertRaises(AssertionError, server.get_mailboxes)

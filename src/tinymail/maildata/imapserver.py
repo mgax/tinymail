@@ -14,11 +14,14 @@ class ImapServer(object):
         status, entries = self.conn.list()
         assert status == 'OK'
 
+        paths = []
         for entry in entries:
             m = list_pattern.match(entry)
             assert m is not None
             folder_path = m.group('name').strip('"')
-            yield folder_path
+            paths.append(folder_path)
+
+        return paths
 
     def get_messages_in_mailbox(self, mbox_name):
         status, count = self.conn.select(mbox_name, readonly=True)
