@@ -84,3 +84,27 @@ class GetMessagesInMailbox(unittest.TestCase):
         out = list(server.get_messages_in_mailbox('testfolder'))
         self.assertEqual(out, [])
         self.assertEqual(called, ['select', 'search'])
+
+class GetFullMessageTest(unittest.TestCase):
+    def test_simple(self):
+        msg = ('From: somebody@example.com\r\n'
+               'To: somebody_else@example.com\r\n\r\n'
+               'Hello world\r\n')
+        called = []
+        class StubImapConnection(object):
+            def select(self, mailbox, readonly):
+                assert readonly is True
+                assert mailbox == 'testfolder'
+                called.append('select')
+                return 'OK', []
+
+            def fetch(self, message_id, spec):
+                called.append('fetch')
+                assert message_id == '2'
+                assert spec == '(RFC822)'
+                return 'OK', [('3 (RFC822 {%d}' % len(msg), msg), ')']
+
+        server = TestServer(StubImapConnection())
+        out = server.get_full_message('testfolder', '2')
+        self.assertEqual(out, msg)
+        self.assertEqual(called, ['select', 'fetch'])
