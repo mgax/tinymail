@@ -5,7 +5,7 @@ list_pattern = re.compile(r'^\((?P<flags>[^\)]*)\) '
                           r'"(?P<delim>[^"]*)" '
                           r'(?P<name>.*)$')
 
-class ImapServerConnection(object):
+class ImapServer(object):
     def __init__(self, config):
         self.conn = imaplib.IMAP4_SSL(config['host'])
         self.conn.login(config['login_name'], config['login_pass'])
@@ -66,7 +66,7 @@ class ImapServerConnection(object):
 
 def get_imap_loop(config):
     def run_loop(in_queue):
-        connection = ImapServerConnection(config)
+        connection = ImapServer(config)
         while True:
             cmd = in_queue.get()
             if cmd is None:

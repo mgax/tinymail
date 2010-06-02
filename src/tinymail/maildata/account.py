@@ -1,4 +1,4 @@
-from imapconn import get_imap_loop
+from imapserver import get_imap_loop
 from async import spin_off, assert_main_thread, MailDataOp
 from folder import Folder
 
