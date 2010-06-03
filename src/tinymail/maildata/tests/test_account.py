@@ -22,6 +22,16 @@ class TestServer(object):
         self.called('get_mailboxes')
         return ['folder one', 'folder two']
 
+    def get_messages_in_mailbox(self, mbox_name):
+        assert mbox_name == 'folder one'
+        return [('1', 'From: person@example.com\r\n\r\n')]
+
+    def get_full_message(self, mbox_name, message_id):
+        assert mbox_name == 'folder one'
+        assert message_id == '1'
+        return ('From: person@example.com\r\n\r\n'
+                'hello world!')
+
 class TestAccount(Account):
     def _configure(self, config):
         (self.remote_do, self.remote_cleanup) = config
@@ -66,3 +76,26 @@ class AccountTest(unittest.TestCase):
         folder_one = self.account.folders[0]
         self.assertTrue(isinstance(folder_one, Folder))
         self.assertEqual(folder_one.imap_name, 'folder one')
+
+    def test_messages_in_folder(self):
+        self.account.update_if_needed()
+        self._run_loop()
+        folder_one = self.account.folders[0]
+        self.assertEqual(folder_one.messages, [])
+
+        folder_one.update_if_needed()
+        self._run_loop()
+        self.assertEqual(len(folder_one.messages), 1)
+
+    def test_message(self):
+        self.account.update_if_needed()
+        self._run_loop()
+        folder_one = self.account.folders[0]
+        folder_one.update_if_needed()
+        self._run_loop()
+        message = folder_one.messages[0]
+        self.assertEqual(dict(message.mime), {'From': 'person@example.com'})
+
+        message.update_if_needed()
+        self._run_loop()
+        self.assertEqual(message.mime.get_payload(), 'hello world!')
