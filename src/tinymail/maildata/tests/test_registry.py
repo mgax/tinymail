@@ -57,3 +57,35 @@ class RegistryTest(unittest.TestCase):
         self.unsubscribe('sel', c2)
         self.reg.notify('sel')
         self.assertEvents()
+
+        self.assertRaises(KeyError, self.unsubscribe, 'sel', c1)
+
+    def test_objc_selector(self):
+        events = self.events
+
+        from Foundation import NSObject
+        class ObjcClass(NSObject):
+            @classmethod
+            def new_with_name(cls, name):
+                i = cls.new()
+                i.name = name
+                return i
+            def dosomething(self, msg):
+                events.append( (self.name, {'msg': msg}) )
+
+        i1 = ObjcClass.new_with_name('x')
+        i2 = ObjcClass.new_with_name('y')
+        self.reg.subscribe('sel', i1.dosomething)
+        self.reg.subscribe('sel', i2.dosomething)
+        self.reg.notify('sel', msg=3)
+        self.assertEvents(('x', {'msg': 3}), ('y', {'msg': 3}))
+
+        self.assertRaises(KeyError, self.reg.unsubscribe, 'z', i1.dosomething)
+
+        self.reg.unsubscribe('sel', i1.dosomething)
+        self.reg.notify('sel', msg=3)
+        self.assertEvents(('y', {'msg': 3}))
+
+        self.reg.unsubscribe('sel', i2.dosomething)
+        self.reg.notify('sel', msg=3)
+        self.assertEvents()
