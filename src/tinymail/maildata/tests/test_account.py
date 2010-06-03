@@ -99,3 +99,33 @@ class AccountTest(unittest.TestCase):
         message.update_if_needed()
         self._run_loop()
         self.assertEqual(message.mime.get_payload(), 'hello world!')
+
+    def test_events(self):
+        events = []
+        def event_logger(name):
+            return lambda **kwargs: events.append( (name, kwargs) )
+
+        self.reg.subscribe((self.account, 'folders_updated'),
+                           event_logger('folders updated'))
+        self.account.update_if_needed()
+        self._run_loop()
+        self.assertEqual(events,
+                         [('folders updated', {'account': self.account})])
+        events[:] = []
+
+        folder_one = self.account.folders[0]
+        self.reg.subscribe((folder_one, 'messages_updated'),
+                           event_logger('messages updated'))
+        folder_one.update_if_needed()
+        self._run_loop()
+        self.assertEqual(events,
+                         [('messages updated', {'folder': folder_one})])
+        events[:] = []
+
+        message = folder_one.messages[0]
+        self.reg.subscribe((message, 'mime_updated'),
+                           event_logger('mime updated'))
+        message.update_if_needed()
+        self._run_loop()
+        self.assertEqual(events, [('mime updated', {'message': message})])
+        events[:] = []
