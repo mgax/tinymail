@@ -6,9 +6,12 @@ from folder import Folder
 class Account(object):
     def __init__(self, reg, config):
         self.reg = reg
-        self.remote_do, self.remote_cleanup = spin_off(get_imap_loop(config))
         self.folders = []
         self._needs_update = True
+        self._configure(config)
+
+    def _configure(self, config):
+        self.remote_do, self.remote_cleanup = spin_off(get_imap_loop(config))
 
     def update_if_needed(self):
         if self._needs_update:

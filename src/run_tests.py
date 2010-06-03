@@ -4,6 +4,7 @@ import unittest
 
 test_names = [
     'tinymail.maildata.tests.test_imap',
+    'tinymail.maildata.tests.test_account',
 ]
 
 def main():
