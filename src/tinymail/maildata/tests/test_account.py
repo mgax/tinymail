@@ -24,11 +24,11 @@ class TestServer(object):
 
     def get_messages_in_mailbox(self, mbox_name):
         assert mbox_name == 'folder one'
-        return [('1', 'From: person@example.com\r\n\r\n')]
+        return [(1, 'From: person@example.com\r\n\r\n')]
 
     def get_full_message(self, mbox_name, message_id):
         assert mbox_name == 'folder one'
-        assert message_id == '1'
+        assert message_id == 1
         return ('From: person@example.com\r\n\r\n'
                 'hello world!')
 

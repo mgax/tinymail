@@ -4,6 +4,7 @@ from async import assert_main_thread, MailDataOp
 
 class Message(object):
     def __init__(self, folder, raw_headers, imap_id):
+        assert isinstance(imap_id, int)
         self.folder = folder
         self.remote_do = folder.remote_do
         self.reg = folder.reg

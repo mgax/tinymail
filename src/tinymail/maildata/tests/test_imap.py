@@ -63,7 +63,7 @@ class GetMessagesInMailbox(unittest.TestCase):
         server = TestServer(StubImapConnection())
         out = list(server.get_messages_in_mailbox('testfolder'))
         self.assertEqual(len(out), 2)
-        self.assertEqual([o[0] for o in out], ['1', '2'])
+        self.assertEqual([o[0] for o in out], [1, 2])
         self.assertTrue('From: somebody@example.com' in out[0][1])
         self.assertTrue('Content-Type: text/plain' in out[1][1])
 
@@ -105,6 +105,6 @@ class GetFullMessageTest(unittest.TestCase):
                 return 'OK', [('3 (RFC822 {%d}' % len(msg), msg), ')']
 
         server = TestServer(StubImapConnection())
-        out = server.get_full_message('testfolder', '2')
+        out = server.get_full_message('testfolder', 2)
         self.assertEqual(out, msg)
         self.assertEqual(called, ['select', 'fetch'])
