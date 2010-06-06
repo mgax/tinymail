@@ -5,6 +5,10 @@ list_pattern = re.compile(r'^\((?P<flags>[^\)]*)\) '
                           r'"(?P<delim>[^"]*)" '
                           r'(?P<name>.*)$')
 
+status_pattern = re.compile(r'^(?P<name>[^(]+)\((?P<status>[\w\d\s]*)\)$')
+
+searchuid_pattern = re.compile(r'(?P<number>\d+)\s+\(UID\s*(?P<uid>\d+)\)$')
+
 def iter_fragments(data):
     data = iter(data)
     while True:
@@ -17,6 +21,7 @@ class ImapMailbox(object):
         self.conn = server.conn
         self.imap_name = imap_name
         self._active = False
+        self._get_status()
 
     def __enter__(self):
         assert not self._active
@@ -27,10 +32,37 @@ class ImapMailbox(object):
         assert self._active
         self._active = False
 
-    def message_headers(self):
+    def _get_status(self):
+        """ get a mailbox's UIDNEXT, UIDVALIDITY, and set of message UIDs """
+
         status, count = self.conn.select(self.imap_name, readonly=True)
         assert status == 'OK'
 
+        status, data = self.conn.status(self.imap_name,
+                                        '(MESSAGES UIDNEXT UIDVALIDITY)')
+        assert status == 'OK'
+
+        m = status_pattern.match(data[0])
+        assert m is not None
+        assert m.group('name').strip().strip('"') == self.imap_name
+        bits = m.group('status').strip().split()
+        self.status = dict(zip(bits[::2], map(int, bits[1::2])))
+
+        uid_and_num = []
+        if self.status['MESSAGES']:
+            status, data = self.conn.fetch('1:*', '(UID)')
+            assert status == 'OK'
+
+            for item in data:
+                m = searchuid_pattern.match(item)
+                assert m is not None
+                uid_and_num.append( (int(m.group('uid')),
+                                     int(m.group('number'))) )
+
+        self.uid_to_num = dict(uid_and_num)
+        self.num_to_uid = dict(map(reversed, uid_and_num))
+
+    def message_headers(self):
         status, data = self.conn.search(None, 'All')
         assert status == 'OK'
         message_ids = data[0].split()
@@ -57,9 +89,6 @@ class ImapMailbox(object):
         return out
 
     def full_message(self, message_id):
-        status, count = self.conn.select(self.imap_name, readonly=True)
-        assert status == 'OK'
-
         status, data = self.conn.fetch(str(message_id), '(RFC822)')
         assert status == 'OK'
         assert len(data) == 2 and data[1] == ')'
