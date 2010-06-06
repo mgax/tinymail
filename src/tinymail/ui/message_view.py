@@ -10,6 +10,13 @@ class MessageViewDelegate(NSObject):
         self.reg.subscribe('ui.message_selected', self.handle_message_selected)
         return self
 
+    def _configure_web_view(self):
+        web_view_prefs = self.web_view.preferences()
+        web_view_prefs.setJavaEnabled_(False)
+        web_view_prefs.setJavaScriptEnabled_(False)
+        web_view_prefs.setPluginsEnabled_(False)
+        web_view_prefs.setUsesPageCache_(False)
+
     def handle_message_selected(self, message):
         if self._message is not None:
             self.reg.unsubscribe((self._message, 'mime_updated'),

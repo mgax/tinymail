@@ -1,6 +1,7 @@
 import traceback
 
 from Foundation import NSObject, objc
+import AppKit
 
 from tinymail.maildata.account import Account
 from tinymail.maildata.events import Registry
@@ -29,6 +30,9 @@ class tinymailAppDelegate(NSObject):
         MessageListingDelegate.create(self.reg, self.messagesPane)
         MessageViewDelegate.create(self.reg, self.messageView)
         ActivityDelegate.create(self.reg, self.activityTable)
+
+        self.window.orderWindow_relativeTo_(AppKit.NSWindowAbove,
+                self.activityTable.window().windowNumber())
 
     def applicationWillTerminate_(self, notification):
         self.the_account.cleanup()

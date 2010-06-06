@@ -21,6 +21,7 @@
 		</object>
 		<object class="NSMutableArray" key="IBDocument.EditedObjectIDs">
 			<bool key="EncodedWithXMLCoder">YES</bool>
+			<integer value="570"/>
 			<integer value="371"/>
 		</object>
 		<object class="NSArray" key="IBDocument.PluginDependencies">
@@ -1325,16 +1326,16 @@
 				<string key="NSName">_NSMainMenu</string>
 			</object>
 			<object class="NSWindowTemplate" id="723132036">
-				<int key="NSWindowStyleMask">31</int>
+				<int key="NSWindowStyleMask">15</int>
 				<int key="NSWindowBacking">2</int>
-				<string key="NSWindowRect">{{1358, 228}, {438, 360}}</string>
+				<string key="NSWindowRect">{{879, 75}, {317, 180}}</string>
 				<int key="NSWTFlags">-1535639552</int>
 				<string key="NSWindowTitle">Window</string>
 				<string key="NSWindowClass">NSPanel</string>
 				<nil key="NSViewClass"/>
 				<string key="NSWindowContentMaxSize">{1.79769e+308, 1.79769e+308}</string>
 				<object class="NSView" key="NSWindowView" id="56949269">
-					<nil key="NSNextResponder"/>
+					<reference key="NSNextResponder"/>
 					<int key="NSvFlags">256</int>
 					<object class="NSMutableArray" key="NSSubviews">
 						<bool key="EncodedWithXMLCoder">YES</bool>
@@ -1351,7 +1352,7 @@
 										<object class="NSTableView" id="232766814">
 											<reference key="NSNextResponder" ref="217472164"/>
 											<int key="NSvFlags">256</int>
-											<string key="NSFrameSize">{438, 358}</string>
+											<string key="NSFrameSize">{317, 180}</string>
 											<reference key="NSSuperview" ref="217472164"/>
 											<int key="NSViewLayerContentsRedrawPolicy">2</int>
 											<bool key="NSEnabled">YES</bool>
@@ -1364,7 +1365,7 @@
 											<object class="NSMutableArray" key="NSTableColumns">
 												<bool key="EncodedWithXMLCoder">YES</bool>
 												<object class="NSTableColumn" id="871118462">
-													<double key="NSWidth">435</double>
+													<double key="NSWidth">314</double>
 													<double key="NSMinWidth">40</double>
 													<double key="NSMaxWidth">1000</double>
 													<object class="NSTableHeaderCell" key="NSHeaderCell">
@@ -1448,8 +1449,9 @@
 											<int key="NSTableViewDraggingDestinationStyle">0</int>
 										</object>
 									</object>
-									<string key="NSFrame">{{1, 1}, {438, 358}}</string>
+									<string key="NSFrame">{{1, 1}, {317, 180}}</string>
 									<reference key="NSSuperview" ref="752455985"/>
+									<reference key="NSNextKeyView" ref="232766814"/>
 									<int key="NSViewLayerContentsRedrawPolicy">2</int>
 									<reference key="NSDocView" ref="232766814"/>
 									<reference key="NSBGColor" ref="1023855796"/>
@@ -1471,27 +1473,28 @@
 									<string key="NSFrame">{{1, 119}, {223, 15}}</string>
 									<reference key="NSSuperview" ref="752455985"/>
 									<int key="NSViewLayerContentsRedrawPolicy">2</int>
-									<bool key="NSEnabled">YES</bool>
 									<int key="NSsFlags">1</int>
 									<reference key="NSTarget" ref="752455985"/>
 									<string key="NSAction">_doScroller:</string>
 									<double key="NSPercent">0.99319727891156462</double>
 								</object>
 							</object>
-							<string key="NSFrame">{{-1, 1}, {440, 360}}</string>
+							<string key="NSFrame">{{-1, -1}, {319, 182}}</string>
 							<reference key="NSSuperview" ref="56949269"/>
+							<reference key="NSNextKeyView" ref="217472164"/>
 							<int key="NSViewLayerContentsRedrawPolicy">2</int>
-							<int key="NSsFlags">690</int>
+							<int key="NSsFlags">562</int>
 							<reference key="NSVScroller" ref="426569316"/>
 							<reference key="NSHScroller" ref="957975769"/>
 							<reference key="NSContentView" ref="217472164"/>
 							<bytes key="NSScrollAmts">QSAAAEEgAABBmAAAQZgAAA</bytes>
 						</object>
 					</object>
-					<string key="NSFrameSize">{438, 360}</string>
+					<string key="NSFrameSize">{317, 180}</string>
+					<reference key="NSSuperview"/>
 					<int key="NSViewLayerContentsRedrawPolicy">2</int>
 				</object>
-				<string key="NSScreenRect">{{0, 0}, {1920, 1178}}</string>
+				<string key="NSScreenRect">{{0, 0}, {1280, 778}}</string>
 				<string key="NSMaxSize">{1.79769e+308, 1.79769e+308}</string>
 			</object>
 			<object class="NSWindowTemplate" id="972006081">
@@ -1844,21 +1847,13 @@
 																		<bool key="EncodedWithXMLCoder">YES</bool>
 																		<string>WebKitDefaultFixedFontSize</string>
 																		<string>WebKitDefaultFontSize</string>
-																		<string>WebKitJavaEnabled</string>
-																		<string>WebKitJavaScriptCanOpenWindowsAutomatically</string>
-																		<string>WebKitJavaScriptEnabled</string>
 																		<string>WebKitMinimumFontSize</string>
-																		<string>WebKitPluginsEnabled</string>
 																	</object>
 																	<object class="NSMutableArray" key="dict.values">
 																		<bool key="EncodedWithXMLCoder">YES</bool>
 																		<integer value="12"/>
 																		<integer value="12"/>
-																		<boolean value="NO"/>
-																		<boolean value="NO"/>
-																		<boolean value="NO"/>
 																		<integer value="1"/>
-																		<boolean value="NO"/>
 																	</object>
 																</object>
 															</object>
@@ -4314,9 +4309,9 @@
 					<integer value="1"/>
 					<string>com.apple.InterfaceBuilder.CocoaPlugin</string>
 					<integer value="1"/>
-					<string>{{453, 308}, {641, 411}}</string>
+					<string>{{223, 308}, {641, 411}}</string>
 					<string>com.apple.InterfaceBuilder.CocoaPlugin</string>
-					<string>{{453, 308}, {641, 411}}</string>
+					<string>{{223, 308}, {641, 411}}</string>
 					<integer value="1"/>
 					<string>{{33, 99}, {480, 360}}</string>
 					<string>{3.40282e+38, 3.40282e+38}</string>
@@ -4429,9 +4424,9 @@
 					<string>com.apple.InterfaceBuilder.CocoaPlugin</string>
 					<integer value="1"/>
 					<string>{{23, 794}, {245, 183}}</string>
-					<string>{{825, 151}, {438, 360}}</string>
+					<string>{{426, 331}, {317, 180}}</string>
 					<string>com.apple.InterfaceBuilder.CocoaPlugin</string>
-					<string>{{825, 151}, {438, 360}}</string>
+					<string>{{426, 331}, {317, 180}}</string>
 					<boolean value="YES"/>
 					<string>com.apple.InterfaceBuilder.CocoaPlugin</string>
 					<string>com.apple.InterfaceBuilder.CocoaPlugin</string>
