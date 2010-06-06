@@ -1,3 +1,4 @@
+from itertools import imap
 import imaplib
 import re
 
@@ -62,34 +63,30 @@ class ImapMailbox(object):
         self.uid_to_num = dict(uid_and_num)
         self.num_to_uid = dict(map(reversed, uid_and_num))
 
-    def message_headers(self):
-        status, data = self.conn.search(None, 'All')
-        assert status == 'OK'
-        message_ids = data[0].split()
+    def message_headers(self, message_uids):
+        assert len(message_uids) > 0
+        assert message_uids.issubset(self.uid_to_num)
+        message_nums = map(self.uid_to_num.get, message_uids)
 
-        if not message_ids:
-            return {}
-
-        # we need to get FLAGS too, otherwise messages are marked as read
-        status, data = self.conn.fetch(','.join(message_ids),
+        status, data = self.conn.fetch(','.join(imap(str, message_nums)),
                                        '(BODY.PEEK[HEADER] FLAGS)')
         assert status == 'OK'
 
-        out = {}
+        headers_by_uid = {}
         for fragment in iter_fragments(data):
             assert len(fragment) == 2, 'unexpected fragment layout'
-            preamble, headers = fragment
+            preamble, mime_headers = fragment
             assert 'BODY[HEADER]' in preamble, 'bad preamble'
+            message_id = int(preamble.split(' ', 1)[0])
+            headers_by_uid[self.num_to_uid[message_id]] = mime_headers
 
-            message_id = preamble.split(' ', 1)[0]
-            mime_headers = headers
+        return headers_by_uid
 
-            out[int(message_id)] = mime_headers
+    def full_message(self, message_uid):
+        assert message_uid in self.uid_to_num
 
-        return out
-
-    def full_message(self, message_id):
-        status, data = self.conn.fetch(str(message_id), '(RFC822)')
+        status, data = self.conn.fetch(str(self.uid_to_num[message_uid]),
+                                       '(RFC822)')
         assert status == 'OK'
         assert len(data) == 2 and data[1] == ')'
         assert isinstance(data[0], tuple) and len(data[0]) == 2

@@ -31,7 +31,7 @@ class MessageListingDelegate(NSObject):
 
         self._folder = folder
         if self._folder is None:
-            self.messages_updated([])
+            self.messages_updated({})
             return
 
         self.messages_updated(self._folder.messages)
@@ -44,7 +44,7 @@ class MessageListingDelegate(NSObject):
         self.messages_updated(folder.messages)
 
     def messages_updated(self, messages):
-        self.messages = messages
+        self.messages = [msg for (uid, msg) in sorted(messages.iteritems())]
         self.table_view.reloadData()
 
     def numberOfRowsInTableView_(self, table_view):

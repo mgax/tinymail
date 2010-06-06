@@ -122,23 +122,13 @@ class GetMessagesInMailbox(unittest.TestCase):
         }}, called.append)
 
         with server.mailbox('testfolder') as mbox:
-            out = mbox.message_headers()
+            out = mbox.message_headers(set([5, 6]))
         self.assertTrue("fetch '1,2' '(BODY.PEEK[HEADER] FLAGS)'" in called)
         self.assertTrue(isinstance(out, dict))
         self.assertEqual(len(out), 2)
-        self.assertEqual(set(out.keys()), set([1, 2]))
-        self.assertTrue('From: somebody@example.com' in out[1])
-        self.assertTrue('Content-Type: text/plain' in out[2])
-
-    def test_empty_folder(self):
-        called = []
-        server = mock_server({'testfolder': {'uidnext': 13, 'uidvalidity': 22,
-            'messages': {},
-        }}, called.append)
-
-        with server.mailbox('testfolder') as mbox:
-            out = mbox.message_headers()
-        self.assertEqual(out, {})
+        self.assertEqual(set(out.keys()), set([5, 6]))
+        self.assertTrue('From: somebody@example.com' in out[5])
+        self.assertTrue('Content-Type: text/plain' in out[6])
 
 class GetFullMessageTest(unittest.TestCase):
     def test_simple(self):
@@ -155,7 +145,7 @@ class GetFullMessageTest(unittest.TestCase):
         }}, called.append)
 
         with server.mailbox('testfolder') as mbox:
-            out = mbox.full_message(2)
+            out = mbox.full_message(5)
         self.assertEqual(out, mime_full)
         self.assertTrue("fetch '2' '(RFC822)'" in called)
 

@@ -17,6 +17,8 @@ def restore_main_thread():
 class TestMailbox(object):
     def __init__(self, called):
         self.called = called
+        self.status = {'UIDNEXT': 13, 'UIDVALIDITY': 22, 'MESSAGES': 1}
+        self.uid_to_num = {6: 1}
 
     def __enter__(self):
         self.called('__enter__')
@@ -25,13 +27,14 @@ class TestMailbox(object):
     def __exit__(self, *args):
         self.called('__exit__')
 
-    def message_headers(self):
-        self.called('message_headers')
-        return {1: 'From: person@example.com\r\n\r\n'}
+    def message_headers(self, message_uids):
+        self.called('message_headers %r' % sorted(message_uids))
+        assert message_uids == set([6])
+        return {6: 'From: person@example.com\r\n\r\n'}
 
-    def full_message(self, message_id):
+    def full_message(self, message_uid):
         self.called('full_message')
-        assert message_id == 1
+        assert message_uid == 6
         return ('From: person@example.com\r\n\r\n'
                 'hello world!')
 
@@ -98,13 +101,13 @@ class AccountTest(unittest.TestCase):
         self.account.update_if_needed()
         self._run_loop()
         folder_one = self.account.folders[0]
-        self.assertEqual(folder_one.messages, [])
+        self.assertEqual(folder_one.messages, {})
         self.called[:] = []
 
         folder_one.update_if_needed()
         self._run_loop()
-        self.assertEqual(self.called, ['__enter__', 'message_headers',
-                                       '__exit__'])
+        self.assertEqual(self.called, ['__enter__', '__exit__',
+                '__enter__', 'message_headers [6]', '__exit__'])
         self.assertEqual(len(folder_one.messages), 1)
 
     def test_message(self):
@@ -113,7 +116,7 @@ class AccountTest(unittest.TestCase):
         folder_one = self.account.folders[0]
         folder_one.update_if_needed()
         self._run_loop()
-        message = folder_one.messages[0]
+        message = folder_one.messages[6]
         self.assertEqual(dict(message.mime), {'From': 'person@example.com'})
         self.called[:] = []
 
@@ -145,7 +148,7 @@ class AccountTest(unittest.TestCase):
                          [('messages updated', {'folder': folder_one})])
         events[:] = []
 
-        message = folder_one.messages[0]
+        message = folder_one.messages[6]
         self.reg.subscribe((message, 'mime_updated'),
                            event_logger('mime updated'))
         message.update_if_needed()
