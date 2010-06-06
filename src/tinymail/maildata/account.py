@@ -19,7 +19,7 @@ class Account(object):
             self.remote_do(ListFoldersOp(account=self))
 
     @assert_main_thread
-    def _imap_folder_list_loaded(self, imap_folders):
+    def _received_folder_list(self, imap_folders):
         self.folders[:] = [Folder(self, imap_name)
                            for imap_name in imap_folders]
         self.reg.notify((self, 'folders_updated'), account=self)
@@ -28,8 +28,8 @@ class Account(object):
         self.remote_cleanup()
 
 class ListFoldersOp(MailDataOp):
-    def perform(self, imap):
-        return imap.get_mailboxes()
+    def perform(self, server):
+        return server.get_mailboxes()
 
     def report(self, result):
-        self.account._imap_folder_list_loaded(result)
+        self.account._received_folder_list(result)

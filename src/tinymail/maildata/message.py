@@ -17,15 +17,15 @@ class Message(object):
             self.remote_do(LoadMessageOp(message=self))
 
     @assert_main_thread
-    def _imap_message_loaded(self, imap_message):
+    def _received_full_message(self, imap_message):
         self.mime = email.message_from_string(imap_message)
         self.state = 'full'
         self.reg.notify((self, 'mime_updated'), message=self)
 
 class LoadMessageOp(MailDataOp):
-    def perform(self, imap):
-        return imap.get_full_message(self.message.folder.imap_name,
+    def perform(self, server):
+        return server.get_full_message(self.message.folder.imap_name,
                                      self.message.imap_id)
 
     def report(self, message_data):
-        self.message._imap_message_loaded(message_data)
+        self.message._received_full_message(message_data)

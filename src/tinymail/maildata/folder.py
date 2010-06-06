@@ -17,14 +17,14 @@ class Folder(object):
             self.remote_do(MessagesInFolderOp(folder=self))
 
     @assert_main_thread
-    def _imap_message_list_loaded(self, imap_messages):
+    def _received_headers_for_messages(self, imap_messages):
         self.messages[:] = [Message(self, mime_headers, imap_msg_id)
                             for imap_msg_id, mime_headers in imap_messages]
         self.reg.notify((self, 'messages_updated'), folder=self)
 
 class MessagesInFolderOp(MailDataOp):
-    def perform(self, imap):
-        return list(imap.get_messages_in_mailbox(self.folder.imap_name))
+    def perform(self, server):
+        return list(server.get_messages_in_mailbox(self.folder.imap_name))
 
     def report(self, imap_messages):
-        self.folder._imap_message_list_loaded(imap_messages)
+        self.folder._received_headers_for_messages(imap_messages)

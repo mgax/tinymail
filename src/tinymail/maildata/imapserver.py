@@ -69,12 +69,12 @@ class ImapServer(object):
 
 def get_imap_loop(config):
     def run_loop(in_queue):
-        connection = ImapServer(config)
+        server = ImapServer(config)
         while True:
             cmd = in_queue.get()
             if cmd is None:
                 break
             else:
-                cmd(connection)
+                cmd(server)
 
     return run_loop
