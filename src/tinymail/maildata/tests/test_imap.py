@@ -4,6 +4,7 @@ from tinymail.maildata import imapserver
 
 class TestServer(imapserver.ImapServer):
     def __init__(self, test_connection):
+        super(TestServer, self).__init__(None)
         self.conn = test_connection
 
 class GetMailboxesTest(unittest.TestCase):
@@ -61,11 +62,13 @@ class GetMessagesInMailbox(unittest.TestCase):
                 ]
 
         server = TestServer(StubImapConnection())
-        out = list(server.get_messages_in_mailbox('testfolder'))
+        with server.mailbox('testfolder') as mbox:
+            out = mbox.message_headers()
+        self.assertTrue(isinstance(out, dict))
         self.assertEqual(len(out), 2)
-        self.assertEqual([o[0] for o in out], [1, 2])
-        self.assertTrue('From: somebody@example.com' in out[0][1])
-        self.assertTrue('Content-Type: text/plain' in out[1][1])
+        self.assertEqual(set(out.keys()), set([1, 2]))
+        self.assertTrue('From: somebody@example.com' in out[1])
+        self.assertTrue('Content-Type: text/plain' in out[2])
 
         self.assertEqual(called, ['select', 'search', 'fetch'])
 
@@ -81,8 +84,9 @@ class GetMessagesInMailbox(unittest.TestCase):
                 return 'OK', ['']
 
         server = TestServer(StubImapConnection())
-        out = list(server.get_messages_in_mailbox('testfolder'))
-        self.assertEqual(out, [])
+        with server.mailbox('testfolder') as mbox:
+            out = mbox.message_headers()
+        self.assertEqual(out, {})
         self.assertEqual(called, ['select', 'search'])
 
 class GetFullMessageTest(unittest.TestCase):
@@ -105,6 +109,7 @@ class GetFullMessageTest(unittest.TestCase):
                 return 'OK', [('3 (RFC822 {%d}' % len(msg), msg), ')']
 
         server = TestServer(StubImapConnection())
-        out = server.get_full_message('testfolder', 2)
+        with server.mailbox('testfolder') as mbox:
+            out = mbox.full_message(2)
         self.assertEqual(out, msg)
         self.assertEqual(called, ['select', 'fetch'])

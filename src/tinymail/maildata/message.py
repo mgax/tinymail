@@ -24,8 +24,8 @@ class Message(object):
 
 class LoadMessageOp(MailDataOp):
     def perform(self, server):
-        return server.get_full_message(self.message.folder.imap_name,
-                                     self.message.imap_id)
+        with server.mailbox(self.message.folder.imap_name) as mbox:
+            return mbox.full_message(self.message.imap_id)
 
     def report(self, message_data):
         self.message._received_full_message(message_data)

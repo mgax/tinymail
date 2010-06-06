@@ -14,17 +14,20 @@ class Folder(object):
     def update_if_needed(self):
         if self._needs_update:
             self._needs_update = False
-            self.remote_do(MessagesInFolderOp(folder=self))
+            self.remote_do(MessageHeadersOp(folder=self))
 
     @assert_main_thread
-    def _received_headers_for_messages(self, imap_messages):
-        self.messages[:] = [Message(self, mime_headers, imap_msg_id)
-                            for imap_msg_id, mime_headers in imap_messages]
+    def _received_headers_for_messages(self, message_headers):
+        messages = []
+        for imap_id in sorted(message_headers.iterkeys()):
+            messages.append(Message(self, message_headers[imap_id], imap_id))
+        self.messages = messages
         self.reg.notify((self, 'messages_updated'), folder=self)
 
-class MessagesInFolderOp(MailDataOp):
+class MessageHeadersOp(MailDataOp):
     def perform(self, server):
-        return list(server.get_messages_in_mailbox(self.folder.imap_name))
+        with server.mailbox(self.folder.imap_name) as mbox:
+            return mbox.message_headers()
 
-    def report(self, imap_messages):
-        self.folder._received_headers_for_messages(imap_messages)
+    def report(self, message_headers):
+        self.folder._received_headers_for_messages(message_headers)

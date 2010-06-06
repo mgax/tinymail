@@ -14,7 +14,29 @@ def mock_main_thread(store):
 def restore_main_thread():
     async.main_thread = _orig_main_thread
 
+class TestMailbox(object):
+    def __init__(self, called):
+        self.called = called
+
+    def __enter__(self):
+        self.called('__enter__')
+        return self
+
+    def __exit__(self, *args):
+        self.called('__exit__')
+
+    def message_headers(self):
+        self.called('message_headers')
+        return {1: 'From: person@example.com\r\n\r\n'}
+
+    def full_message(self, message_id):
+        self.called('full_message')
+        assert message_id == 1
+        return ('From: person@example.com\r\n\r\n'
+                'hello world!')
+
 class TestServer(object):
+    _mailbox_cls = TestMailbox
     def __init__(self, called):
         self.called = called
 
@@ -22,15 +44,9 @@ class TestServer(object):
         self.called('get_mailboxes')
         return ['folder one', 'folder two']
 
-    def get_messages_in_mailbox(self, mbox_name):
-        assert mbox_name == 'folder one'
-        return [(1, 'From: person@example.com\r\n\r\n')]
-
-    def get_full_message(self, mbox_name, message_id):
-        assert mbox_name == 'folder one'
-        assert message_id == 1
-        return ('From: person@example.com\r\n\r\n'
-                'hello world!')
+    def mailbox(self, imap_name):
+        assert imap_name == 'folder one'
+        return TestMailbox(self.called)
 
 class TestAccount(Account):
     def _configure(self, config):
@@ -83,9 +99,12 @@ class AccountTest(unittest.TestCase):
         self._run_loop()
         folder_one = self.account.folders[0]
         self.assertEqual(folder_one.messages, [])
+        self.called[:] = []
 
         folder_one.update_if_needed()
         self._run_loop()
+        self.assertEqual(self.called, ['__enter__', 'message_headers',
+                                       '__exit__'])
         self.assertEqual(len(folder_one.messages), 1)
 
     def test_message(self):
@@ -96,9 +115,12 @@ class AccountTest(unittest.TestCase):
         self._run_loop()
         message = folder_one.messages[0]
         self.assertEqual(dict(message.mime), {'From': 'person@example.com'})
+        self.called[:] = []
 
         message.update_if_needed()
         self._run_loop()
+        self.assertEqual(self.called, ['__enter__', 'full_message',
+                                       '__exit__'])
         self.assertEqual(message.mime.get_payload(), 'hello world!')
 
     def test_events(self):
