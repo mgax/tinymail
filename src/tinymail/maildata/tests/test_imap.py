@@ -2,66 +2,95 @@ import unittest
 
 from tinymail.maildata import imapserver
 
-class TestServer(imapserver.ImapServer):
+class MockImapConnection(object):
+    def __init__(self, mbox_data, called):
+        self.mbox_data = mbox_data
+        self.called = called
+
+    def list(self):
+        self.called('list')
+        data = [r'(\HasNoChildren) "." "%s"' % name for name in self.mbox_data]
+        return 'OK', data
+
+    def select(self, mbox_name, readonly):
+        assert readonly is True
+        assert mbox_name in self.mbox_data
+        self.called('select %r' % mbox_name)
+        self._selected_mbox = mbox_name
+        self._messages = self.mbox_data[self._selected_mbox]['messages']
+        self._n_to_uid = dict( (n+1, uid) for (n, uid) in
+                               enumerate(sorted(self._messages)) )
+        return 'OK', []
+
+    def search(self, *args):
+        self.called('search')
+        return 'OK', [' '.join(map(str, sorted(self._n_to_uid)))]
+
+    def fetch(self, message_ids, spec):
+        self.called('fetch %r %r' % (message_ids, spec))
+        assert spec[0] == '(' and spec[-1] == ')'
+        spec_names = spec[1:-1].split(' ')
+
+        class FetchParts(object):
+            def __init__(self, message):
+                self.message = message
+
+            def __getitem__(self, spec):
+                if spec == 'BODY.PEEK[HEADER]':
+                    header = self.message['headers']
+                    return {'preamble': 'BODY[HEADER] {%d}' % len(header),
+                            'data': header}
+                elif spec == 'FLAGS':
+                    flags = ' '.join(self.message['flags'])
+                    return {'preamble': 'FLAGS (%s)' % flags, 'data': ''}
+
+                elif spec == 'RFC822':
+                    full = self.message['full']
+                    return {'preamble': 'RFC822 {%d}' % len(full),
+                            'data': full}
+
+                else:
+                    raise NotImplementedError
+
+        output_data = []
+        for n in map(int, message_ids.split(',')):
+            fetch_parts = FetchParts(self._messages[self._n_to_uid[n]])
+            parts = [fetch_parts[name] for name in spec_names]
+            preamble = '%d (%s' % (n, ' '.join(p['preamble'] for p in parts))
+            data_piece = ''.join(p['data'] for p in parts)
+
+            output_data.append( (preamble, data_piece) )
+            output_data.append(')')
+
+        return 'OK', output_data
+
+class MockServer(imapserver.ImapServer):
     def __init__(self, test_connection):
-        super(TestServer, self).__init__(None)
+        super(MockServer, self).__init__(None)
         self.conn = test_connection
+
+def mock_server(mbox_data, called=lambda x: None):
+    return MockServer(MockImapConnection(mbox_data, called))
 
 class GetMailboxesTest(unittest.TestCase):
     def test_simple(self):
-        class StubImapConnection(object):
-            def list(self):
-                return 'OK', [r'(\HasNoChildren) "." "folder one"',
-                              r'(\HasNoChildren) "." "folder two"']
-
-        server = TestServer(StubImapConnection())
+        server = mock_server({'folder one':{}, 'folder two':{}})
         out = server.get_mailboxes()
-        self.assertEqual(out, ['folder one', 'folder two'])
-
-    def test_error_response(self):
-        class StubImapConnection(object):
-            def list(self):
-                return "anything that's not 'OK'", ""
-
-        server = TestServer(StubImapConnection())
-        self.assertRaises(AssertionError, server.get_mailboxes)
-
-    def test_malformed_response(self):
-        class StubImapConnection(object):
-            def list(self):
-                return "OK", ['blah blah']
-
-        server = TestServer(StubImapConnection())
-        self.assertRaises(AssertionError, server.get_mailboxes)
+        self.assertEqual(set(out), set(['folder one', 'folder two']))
 
 class GetMessagesInMailbox(unittest.TestCase):
     def test_simple(self):
         called = []
-        class StubImapConnection(object):
-            def select(self, mailbox, readonly):
-                assert readonly is True
-                assert mailbox == 'testfolder'
-                called.append('select')
-                return 'OK', []
+        server = mock_server({'testfolder': {
+            'messages': {
+                5: {'headers': ('From: somebody@example.com\r\n'
+                                'To: somebody_else@example.com\r\n\r\n'),
+                    'flags': [r'\Seen']},
+                6: {'headers': 'Content-Type: text/plain\r\n\r\n',
+                    'flags': [r'\Answered', r'\Seen']},
+            },
+        }}, called.append)
 
-            def search(self, *args):
-                called.append('search')
-                return 'OK', ['1 2']
-
-            def fetch(self, msg_ids, spec):
-                assert msg_ids == '1,2'
-                called.append('fetch')
-                return 'OK', [
-                    ('1 (FLAGS (\\Seen) BODY[HEADER] {60}',
-                      'From: somebody@example.com\r\n'
-                      'To: somebody_else@example.com\r\n\r\n'),
-                    ')',
-                    ('2 (FLAGS (\\Answered \\Seen) BODY[HEADER] {28}',
-                      'Content-Type: text/plain\r\n\r\n'),
-                    ')',
-                ]
-
-        server = TestServer(StubImapConnection())
         with server.mailbox('testfolder') as mbox:
             out = mbox.message_headers()
         self.assertTrue(isinstance(out, dict))
@@ -70,46 +99,37 @@ class GetMessagesInMailbox(unittest.TestCase):
         self.assertTrue('From: somebody@example.com' in out[1])
         self.assertTrue('Content-Type: text/plain' in out[2])
 
-        self.assertEqual(called, ['select', 'search', 'fetch'])
+        self.assertEqual(called, ["select 'testfolder'",
+                                  "search",
+                                  "fetch '1,2' '(BODY.PEEK[HEADER] FLAGS)'"])
 
     def test_empty_folder(self):
         called = []
-        class StubImapConnection(object):
-            def select(self, mailbox, readonly):
-                called.append('select')
-                return 'OK', []
+        server = mock_server({'testfolder': {
+            'messages': {},
+        }}, called.append)
 
-            def search(self, *args):
-                called.append('search')
-                return 'OK', ['']
-
-        server = TestServer(StubImapConnection())
         with server.mailbox('testfolder') as mbox:
             out = mbox.message_headers()
         self.assertEqual(out, {})
-        self.assertEqual(called, ['select', 'search'])
+        self.assertEqual(called, ["select 'testfolder'", "search"])
 
 class GetFullMessageTest(unittest.TestCase):
     def test_simple(self):
-        msg = ('From: somebody@example.com\r\n'
-               'To: somebody_else@example.com\r\n\r\n'
-               'Hello world\r\n')
+        mime_headers = ('From: somebody@example.com\r\n'
+                        'To: somebody_else@example.com\r\n\r\n')
+        mime_full = mime_headers + 'Hello world\r\n'
         called = []
-        class StubImapConnection(object):
-            def select(self, mailbox, readonly):
-                assert readonly is True
-                assert mailbox == 'testfolder'
-                called.append('select')
-                return 'OK', []
+        server = mock_server({'testfolder': {
+            'messages': {
+                3: {'headers': 'some mime header stuff'},
+                5: {'headers': mime_headers,
+                    'full': mime_full},
+            },
+        }}, called.append)
 
-            def fetch(self, message_id, spec):
-                called.append('fetch')
-                assert message_id == '2'
-                assert spec == '(RFC822)'
-                return 'OK', [('3 (RFC822 {%d}' % len(msg), msg), ')']
-
-        server = TestServer(StubImapConnection())
         with server.mailbox('testfolder') as mbox:
             out = mbox.full_message(2)
-        self.assertEqual(out, msg)
-        self.assertEqual(called, ['select', 'fetch'])
+        self.assertEqual(out, mime_full)
+        self.assertEqual(called, ["select 'testfolder'",
+                                  "fetch '2' '(RFC822)'"])
