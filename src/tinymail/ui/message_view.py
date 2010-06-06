@@ -33,12 +33,14 @@ class MessageViewDelegate(NSObject):
         self._message.update_if_needed()
 
     def handle_mime_updated(self, message):
-        assert message is self._message, '%r is not %r' % (message.imap_id, self._message.imap_id)
+        assert message is self._message, ('%r is not %r' %
+                                (message.imap_id, self._message.imap_id))
         self._update_view_with_string(self._message.mime.as_string())
 
     def _update_view_with_string(self, str_data):
         ns_str = NSString.stringWithString_(str_data.decode('latin-1'))
         data = ns_str.dataUsingEncoding_(NSISOLatin1StringEncoding)
         url = NSURL.URLWithString_('about:blank')
-        self.web_view.mainFrame().loadData_MIMEType_textEncodingName_baseURL_(
-                    data, 'text/plain', 'latin-1', url)
+        frame = self.web_view.mainFrame()
+        frame.loadData_MIMEType_textEncodingName_baseURL_(data, 'text/plain',
+                                                          'latin-1', url)

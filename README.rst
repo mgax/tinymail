@@ -3,7 +3,7 @@ TinyMail
 
 An IMAP mail client for the Mac. It's written in 100% Python within the
 Cocoa environment (using PyObjC). Inspiration for TinyMail comes from
-the `email-init`_ discussion and the `Letters.app`_ project
+the `email-init`_ discussion and the `Letters.app`_ project.
 
 .. _`email-init`: http://lists.ranchero.com/listinfo.cgi/email-init-ranchero.com
 .. _`Letters.app`: http://github.com/ccgus/letters
@@ -31,9 +31,9 @@ Plans
 For the moment sending email is not a priority. I'd like to have solid
 IMAP support first. Here's the current TODO list:
 
-* pretty "activity" window
 * unit tests for everything non-GUI
 * local message cache
 * managing unread status and flags
+* uploading, deleting, copying messages
 
 The name `tinymail` is temporary. Looking for a better name.

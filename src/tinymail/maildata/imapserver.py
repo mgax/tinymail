@@ -1,4 +1,3 @@
-from itertools import imap
 import imaplib
 import re
 
@@ -68,7 +67,7 @@ class ImapMailbox(object):
         assert message_uids.issubset(self.uid_to_num)
         message_nums = map(self.uid_to_num.get, message_uids)
 
-        status, data = self.conn.fetch(','.join(imap(str, message_nums)),
+        status, data = self.conn.fetch(','.join(map(str, message_nums)),
                                        '(BODY.PEEK[HEADER] FLAGS)')
         assert status == 'OK'
 

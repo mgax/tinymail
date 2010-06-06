@@ -1,6 +1,5 @@
-import traceback
-
-from Foundation import NSObject, objc
+import objc
+from Foundation import NSObject
 import AppKit
 
 from tinymail.maildata.account import Account
