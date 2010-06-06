@@ -11,6 +11,7 @@ class Folder(object):
         self.messages = {}
         self.uidvalidity = None
         self._needs_update = True
+        self._messages_to_load = set()
 
     def update_if_needed(self):
         if self._needs_update:
@@ -25,16 +26,24 @@ class Folder(object):
         else:
             assert self.uidvalidity == mbox_status['UIDVALIDITY']
 
-        to_load = message_uids.difference(self.messages)
+        self._messages_to_load.update(message_uids.difference(self.messages))
+        self._load_headers_incrementally()
+
+    def _load_headers_incrementally(self):
+        if not self._messages_to_load:
+            return
+        batch = set(sorted(self._messages_to_load)[:10])
         self.remote_do(MessageHeadersOp(folder=self,
-                                        message_uids=to_load,
+                                        message_uids=batch,
                                         uidvalidity=self.uidvalidity))
 
     @assert_main_thread
     def _received_headers_for_messages(self, message_headers):
         for uid, raw_headers in message_headers.iteritems():
+            self._messages_to_load.remove(uid)
             self.messages[uid] = Message(self, uid, self.uidvalidity,
                                          raw_headers)
+        self._load_headers_incrementally()
         self.reg.notify((self, 'messages_updated'), folder=self)
 
 class FolderStatusOp(MailDataOp):
