@@ -7,8 +7,15 @@ list_pattern = re.compile(r'^\((?P<flags>[^\)]*)\) '
 
 class ImapServer(object):
     def __init__(self, config):
-        self.conn = imaplib.IMAP4_SSL(config['host'])
-        self.conn.login(config['login_name'], config['login_pass'])
+        self.config = config
+
+    def __enter__(self):
+        self.conn = imaplib.IMAP4_SSL(self.config['host'])
+        self.conn.login(self.config['login_name'], self.config['login_pass'])
+        return self
+
+    def __exit__(self, *args):
+        self.conn.shutdown()
 
     def get_mailboxes(self):
         status, entries = self.conn.list()
@@ -64,17 +71,14 @@ class ImapServer(object):
 
         return data[0][1]
 
-    def cleanup(self):
-        self.conn.shutdown()
-
 def get_imap_loop(config):
     def run_loop(in_queue):
-        server = ImapServer(config)
-        while True:
-            cmd = in_queue.get()
-            if cmd is None:
-                break
-            else:
-                cmd(server)
+        with ImapServer(config) as server:
+            while True:
+                cmd = in_queue.get()
+                if cmd is None:
+                    break
+                else:
+                    cmd(server)
 
     return run_loop
