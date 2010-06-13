@@ -186,7 +186,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "DEST_PATH=$TARGET_BUILD_DIR/tinymail.app/Contents/Resources\necho cp -r src/tinymail \"$DESET_PATH\"\ncp -r src/tinymail \"$DEST_PATH\" || exit 0\necho \"done\"";
+			shellScript = "DEST_PATH=$TARGET_BUILD_DIR/tinymail.app/Contents/Resources\necho cp -r src/tinymail \"$DESET_PATH\"\ncp -r src/tinymail \"$DEST_PATH\" || exit 0\n\n[[ $CONFIGURATION = \"Debug\" ]] && {\n    echo \"setting debug_mode flag\"\n    echo \"debug_mode = True\" >> $DEST_PATH/tinymail/ui/app_delegate.py\n}\n\necho \"done\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

@@ -10,6 +10,8 @@ from message_listing import MessageListingDelegate
 from message_view import MessageViewDelegate
 from activity_view import ActivityDelegate
 
+from PyObjCTools import Debugging
+
 class tinymailAppDelegate(NSObject):
     window = objc.IBOutlet()
     foldersPane = objc.IBOutlet()
@@ -18,6 +20,8 @@ class tinymailAppDelegate(NSObject):
     activityTable = objc.IBOutlet()
 
     def applicationDidFinishLaunching_(self, notification):
+        if debug_mode:
+            Debugging.installPythonExceptionHandler()
         self.reg = Registry()
         self.the_account = Account(self.reg, read_config())
         self._set_up_ui()
@@ -43,3 +47,6 @@ def read_config():
     cfg_path = path.join(os.environ['HOME'], '.tinymail/account.json')
     with open(cfg_path, 'rb') as f:
         return json.loads(f.read())
+
+debug_mode = False
+# at build time 'debug_mode = True' gets appended if CONFIGURATION is 'Debug'
