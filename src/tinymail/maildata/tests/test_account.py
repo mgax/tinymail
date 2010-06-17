@@ -19,6 +19,7 @@ class TestMailbox(object):
         self.called = called
         self.status = {'UIDNEXT': 13, 'UIDVALIDITY': 22, 'MESSAGES': 1}
         self.uid_to_num = {6: 1}
+        self.flags_by_uid = {6: ('\\Seen',)}
 
     def __enter__(self):
         self.called('__enter__')

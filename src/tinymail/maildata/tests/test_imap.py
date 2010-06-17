@@ -62,7 +62,7 @@ class MockImapConnection(object):
                     return {'preamble': 'BODY[HEADER] {%d}' % len(header),
                             'data': header}
                 elif spec == 'FLAGS':
-                    flags = ' '.join(self.message['flags'])
+                    flags = ' '.join(self.message.get('flags', []))
                     return {'preamble': 'FLAGS (%s)' % flags, 'data': ''}
                 elif spec == 'RFC822':
                     full = self.message['full']
@@ -159,7 +159,7 @@ class MailboxStatusTest(unittest.TestCase):
         mbox = server.mailbox('testfolder')
         expected = ["select 'testfolder'",
                     "status 'testfolder' '(MESSAGES UIDNEXT UIDVALIDITY)'",
-                    "fetch '1:*' '(UID)'"]
+                    "fetch '1:*' '(UID FLAGS)'"]
         self.assertEqual(called, expected)
 
         expected_status = {'UIDNEXT': 13, 'UIDVALIDITY': 13, 'MESSAGES': 2}

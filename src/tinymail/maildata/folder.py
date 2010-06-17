@@ -19,14 +19,17 @@ class Folder(object):
             self.remote_do(FolderStatusOp(folder=self))
 
     @assert_main_thread
-    def _received_folder_status(self, mbox_status, message_uids):
+    def _received_folder_status(self, mbox_status, flags_by_uid):
         if self.uidvalidity is None:
             assert self.messages == {}
             self.uidvalidity = mbox_status['UIDVALIDITY']
         else:
             assert self.uidvalidity == mbox_status['UIDVALIDITY']
 
-        self._messages_to_load.update(message_uids.difference(self.messages))
+        self._flags_by_uid = flags_by_uid
+
+        current_uids = set(flags_by_uid)
+        self._messages_to_load.update(current_uids.difference(self.messages))
         self._load_headers_incrementally()
 
     def _load_headers_incrementally(self):
@@ -41,7 +44,8 @@ class Folder(object):
     def _received_headers_for_messages(self, message_headers):
         for uid, raw_headers in message_headers.iteritems():
             self._messages_to_load.remove(uid)
-            self.messages[uid] = Message(self, uid, raw_headers)
+            flags = self._flags_by_uid[uid]
+            self.messages[uid] = Message(self, uid, raw_headers, flags)
 
         self._load_headers_incrementally()
         self.reg.notify((self, 'messages_updated'), folder=self)
@@ -56,10 +60,10 @@ class Folder(object):
 class FolderStatusOp(MailDataOp):
     def perform(self, server):
         with server.mailbox(self.folder.imap_name) as mbox:
-            return dict(mbox.status), set(mbox.uid_to_num)
+            return dict(mbox.status), dict(mbox.flags_by_uid)
 
-    def report(self, status_and_uids):
-        self.folder._received_folder_status(*status_and_uids)
+    def report(self, status_and_flags):
+        self.folder._received_folder_status(*status_and_flags)
 
 
 class MessageHeadersOp(MailDataOp):

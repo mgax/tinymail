@@ -7,7 +7,8 @@ list_pattern = re.compile(r'^\((?P<flags>[^\)]*)\) '
 
 status_pattern = re.compile(r'^(?P<name>[^(]+)\((?P<status>[\w\d\s]*)\)$')
 
-searchuid_pattern = re.compile(r'(?P<number>\d+)\s+\(UID\s*(?P<uid>\d+)\)$')
+searchuid_pattern = re.compile(r'(?P<number>\d+)\s+\(UID\s*(?P<uid>\d+)'
+                               r'\s+FLAGS \((?P<flags>[^\)]*)\)\)$')
 
 def iter_fragments(data):
     data = iter(data)
@@ -48,19 +49,22 @@ class ImapMailbox(object):
         bits = m.group('status').strip().split()
         self.status = dict(zip(bits[::2], map(int, bits[1::2])))
 
+        flags_by_uid = {}
         uid_and_num = []
         if self.status['MESSAGES']:
-            status, data = self.conn.fetch('1:*', '(UID)')
+            status, data = self.conn.fetch('1:*', '(UID FLAGS)')
             assert status == 'OK'
 
             for item in data:
                 m = searchuid_pattern.match(item)
                 assert m is not None
-                uid_and_num.append( (int(m.group('uid')),
-                                     int(m.group('number'))) )
+                (uid, number) = (int(m.group('uid')), int(m.group('number')))
+                flags_by_uid[uid] = tuple(m.group('flags').split())
+                uid_and_num.append( (uid, number) )
 
         self.uid_to_num = dict(uid_and_num)
         self.num_to_uid = dict(map(reversed, uid_and_num))
+        self.flags_by_uid = flags_by_uid
 
     def message_headers(self, message_uids):
         assert len(message_uids) > 0
