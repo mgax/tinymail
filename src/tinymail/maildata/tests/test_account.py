@@ -117,14 +117,13 @@ class AccountTest(unittest.TestCase):
         folder_one.update_if_needed()
         self._run_loop()
         message = folder_one.messages[6]
-        self.assertEqual(dict(message.mime), {'From': 'person@example.com'})
+        self.assertEqual(dict(message.headers), {'From': 'person@example.com'})
         self.called[:] = []
 
-        message.update_if_needed()
+        message.request_fullmsg()
         self._run_loop()
         self.assertEqual(self.called, ['__enter__', 'full_message',
                                        '__exit__'])
-        self.assertEqual(message.mime.get_payload(), 'hello world!')
 
     def test_events(self):
         events = []
@@ -149,9 +148,14 @@ class AccountTest(unittest.TestCase):
         events[:] = []
 
         message = folder_one.messages[6]
-        self.reg.subscribe((message, 'mime_updated'),
-                           event_logger('mime updated'))
-        message.update_if_needed()
+        self.reg.subscribe((message, 'full_message'),
+                           event_logger('full message'))
+        message.request_fullmsg()
         self._run_loop()
-        self.assertEqual(events, [('mime updated', {'message': message})])
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0][0], 'full message')
+        self.assertTrue(events[0][1]['message'] is message)
+        mime = events[0][1]['mime']
+        self.assertEqual(mime['From'], 'person@example.com')
+        self.assertEqual(mime.get_payload(), 'hello world!')
         events[:] = []

@@ -19,23 +19,27 @@ class MessageViewDelegate(NSObject):
 
     def handle_message_selected(self, message):
         if self._message is not None:
-            self.reg.unsubscribe((self._message, 'mime_updated'),
-                                 self.handle_mime_updated)
+            self.reg.unsubscribe((self._message, 'full_message'),
+                                 self.handle_full_message)
 
         self._message = message
         if self._message is None:
             self._update_view_with_string("")
             return
 
-        self._update_view_with_string(self._message.mime.as_string())
-        self.reg.subscribe((self._message, 'mime_updated'),
-                           self.handle_mime_updated)
-        self._message.update_if_needed()
+        self._update_view_with_string("Loading...")
+        self._displayed = False
+        self.reg.subscribe((self._message, 'full_message'),
+                           self.handle_full_message)
+        self._message.request_fullmsg()
 
-    def handle_mime_updated(self, message):
+    def handle_full_message(self, message, mime):
         assert message is self._message, ('%r is not %r' %
                                 (message.imap_id, self._message.imap_id))
-        self._update_view_with_string(self._message.mime.as_string())
+        if self._displayed:
+            return
+        self._displayed = True
+        self._update_view_with_string(mime.as_string())
 
     def _update_view_with_string(self, str_data):
         ns_str = NSString.stringWithString_(str_data.decode('latin-1'))

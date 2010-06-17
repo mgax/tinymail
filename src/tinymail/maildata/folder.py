@@ -41,10 +41,17 @@ class Folder(object):
     def _received_headers_for_messages(self, message_headers):
         for uid, raw_headers in message_headers.iteritems():
             self._messages_to_load.remove(uid)
-            self.messages[uid] = Message(self, uid, self.uidvalidity,
-                                         raw_headers)
+            self.messages[uid] = Message(self, uid, raw_headers)
+
         self._load_headers_incrementally()
         self.reg.notify((self, 'messages_updated'), folder=self)
+
+    def request_fullmsg(self, msg):
+        self.remote_do(LoadMessageOp(folder=self, message_uid=msg.uid))
+
+    @assert_main_thread
+    def _received_full_message(self, uid, raw_message):
+        self.messages[uid].fullmsg_ready(raw_message)
 
 class FolderStatusOp(MailDataOp):
     def perform(self, server):
@@ -63,3 +70,12 @@ class MessageHeadersOp(MailDataOp):
 
     def report(self, message_headers):
         self.folder._received_headers_for_messages(message_headers)
+
+class LoadMessageOp(MailDataOp):
+    def perform(self, server):
+        with server.mailbox(self.folder.imap_name) as mbox:
+            assert mbox.status['UIDVALIDITY'] == self.folder.uidvalidity
+            return mbox.full_message(self.message_uid)
+
+    def report(self, raw_message):
+        self.folder._received_full_message(self.message_uid, raw_message)

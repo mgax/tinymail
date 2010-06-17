@@ -51,7 +51,7 @@ class MessageListingDelegate(NSObject):
         return len(self.messages)
 
     def tableView_objectValueForTableColumn_row_(self, table_view, col, row):
-        return self.messages[row].mime[col.identifier()]
+        return self.messages[row].headers[col.identifier()]
 
     def tableView_shouldSelectTableColumn_(self, table_view, col):
         return False
