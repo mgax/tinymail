@@ -37,6 +37,10 @@ class tinymailAppDelegate(NSObject):
         self.window.orderWindow_relativeTo_(AppKit.NSWindowAbove,
                 self.activityTable.window().windowNumber())
 
+    @objc.IBAction
+    def doSync_(self, sender):
+        self.the_account.sync_folders()
+
     def applicationWillTerminate_(self, notification):
         self.the_account.cleanup()
 
