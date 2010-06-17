@@ -76,6 +76,9 @@ class FolderStatusOp(MailDataOp):
     def report(self, status_and_flags):
         self.folder._received_folder_status(*status_and_flags)
 
+    def label(self):
+        return u'%r - status' % self.folder.imap_name
+
 
 class MessageHeadersOp(MailDataOp):
     def perform(self, server):
@@ -86,6 +89,10 @@ class MessageHeadersOp(MailDataOp):
     def report(self, message_headers):
         self.folder._received_headers_for_messages(message_headers)
 
+    def label(self):
+        count = len(self.folder._messages_to_load) + len(self.message_uids)
+        return u'%r - headers (%d left)' % (self.folder.imap_name, count)
+
 class LoadMessageOp(MailDataOp):
     def perform(self, server):
         with server.mailbox(self.folder.imap_name) as mbox:
@@ -94,3 +101,6 @@ class LoadMessageOp(MailDataOp):
 
     def report(self, raw_message):
         self.folder._received_full_message(self.message_uid, raw_message)
+
+    def label(self):
+        return u'%r - message %d' % (self.folder.imap_name, self.message_uid)

@@ -25,7 +25,7 @@ class ActivityDelegate(NSObject):
 
     def handle_op_status(self, op):
         i = self.in_flight_ops.index(op)
-        self.state_msgs[i] = "%s: %s" % (type(op).__name__, op.state_msg)
+        self.state_msgs[i] = u"%s [%s]" % (op.label(), op.state_msg)
         self.table_view.reloadData()
 
     def handle_op_finished(self, op):

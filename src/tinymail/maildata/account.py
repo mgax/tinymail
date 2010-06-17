@@ -38,3 +38,6 @@ class ListFoldersOp(MailDataOp):
 
     def report(self, result):
         self.account._received_folder_list(result)
+
+    def label(self):
+        return u'folder list'
