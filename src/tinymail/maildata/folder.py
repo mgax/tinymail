@@ -12,14 +12,19 @@ class Folder(object):
         self.uidvalidity = None
         self._needs_update = True
         self._messages_to_load = set()
+        self._sync_in_progress = False
 
     def update_if_needed(self):
-        if self._needs_update:
-            self._needs_update = False
+        return self.sync()
+
+    def sync(self):
+        if not self._sync_in_progress:
+            self._sync_in_progress = True
             self.remote_do(FolderStatusOp(folder=self))
 
     @assert_main_thread
     def _received_folder_status(self, mbox_status, flags_by_uid):
+        self._sync_in_progress = False
         if self.uidvalidity is None:
             assert self.messages == {}
             self.uidvalidity = mbox_status['UIDVALIDITY']
@@ -35,7 +40,7 @@ class Folder(object):
     def _load_headers_incrementally(self):
         if not self._messages_to_load:
             return
-        batch = set(sorted(self._messages_to_load)[:10])
+        batch = set(sorted(self._messages_to_load)[:100])
         self.remote_do(MessageHeadersOp(folder=self,
                                         message_uids=batch,
                                         uidvalidity=self.uidvalidity))

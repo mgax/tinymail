@@ -56,6 +56,9 @@ class TestAccount(Account):
     def _configure(self, config):
         (self.remote_do, self.remote_cleanup) = config
 
+    def sync_folders(self):
+        pass
+
 class AccountTest(unittest.TestCase):
     def setUp(self):
         self.reg = Registry()

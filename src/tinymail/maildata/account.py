@@ -18,11 +18,16 @@ class Account(object):
             self._needs_update = False
             self.remote_do(ListFoldersOp(account=self))
 
+    def sync_folders(self):
+        for folder in self.folders:
+            folder.sync()
+
     @assert_main_thread
     def _received_folder_list(self, imap_folders):
         self.folders[:] = [Folder(self, imap_name)
                            for imap_name in imap_folders]
         self.reg.notify((self, 'folders_updated'), account=self)
+        self.sync_folders()
 
     def cleanup(self):
         self.remote_cleanup()
