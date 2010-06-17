@@ -32,6 +32,12 @@ class Folder(object):
             assert self.uidvalidity == mbox_status['UIDVALIDITY']
 
         self._flags_by_uid = flags_by_uid
+        for uid in set(self.messages):
+            if uid in flags_by_uid:
+                self.messages[uid].flags = flags_by_uid[uid]
+            else:
+                del self.messages[uid]
+        self.reg.notify((self, 'messages_updated'), folder=self)
 
         current_uids = set(flags_by_uid)
         self._messages_to_load.update(current_uids.difference(self.messages))

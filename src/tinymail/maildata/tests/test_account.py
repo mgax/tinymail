@@ -148,7 +148,8 @@ class AccountTest(unittest.TestCase):
         folder_one.update_if_needed()
         self._run_loop()
         self.assertEqual(events,
-                         [('messages updated', {'folder': folder_one})])
+                         [('messages updated', {'folder': folder_one}),
+                          ('messages updated', {'folder': folder_one})])
         events[:] = []
 
         message = folder_one.messages[6]
