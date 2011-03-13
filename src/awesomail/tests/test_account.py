@@ -1,5 +1,6 @@
-from mock import Mock
+from mock import Mock, patch
 import unittest
+from monocle.callback import defer
 
 class AccountTest(unittest.TestCase):
     def test_list_folders(self):
@@ -25,10 +26,25 @@ class AccountTest(unittest.TestCase):
 class FolderTest(unittest.TestCase):
     def test_list_messages(self):
         from awesomail.account import Folder
-        folder = Folder()
+        folder = Folder(Mock(), 'fol1')
         msg1, msg2 = Mock(), Mock()
         folder._messages = {1: msg1, 2: msg2}
 
         messages = list(folder.list_messages())
 
         self.assertEqual(messages, [msg1, msg2])
+
+class AccountUpdateTest(unittest.TestCase):
+    @patch('awesomail.account.get_worker')
+    def test_list_folders(self, mock_get_worker):
+        from awesomail.account import Account
+        folder_names = ['fol1', 'fol2']
+        account = Account()
+        mock_worker = Mock()
+        mock_get_worker.return_value = defer(mock_worker)
+        mock_worker.get_mailbox_names.return_value = defer(folder_names)
+
+        account.perform_update()
+
+        self.assertEqual(set(f.name for f in account.list_folders()),
+                         set(folder_names))
