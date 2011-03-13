@@ -43,8 +43,25 @@ class AccountUpdateTest(unittest.TestCase):
         mock_worker = Mock()
         mock_get_worker.return_value = defer(mock_worker)
         mock_worker.get_mailbox_names.return_value = defer(folder_names)
+        mock_worker.get_messages_in_folder.return_value = defer([])
 
         account.perform_update()
 
         self.assertEqual(set(f.name for f in account.list_folders()),
                          set(folder_names))
+
+    @patch('awesomail.account.get_worker')
+    def test_list_messages(self, mock_get_worker):
+        from awesomail.account import Account
+        account = Account()
+        mock_worker = Mock()
+        mock_get_worker.return_value = defer(mock_worker)
+        mock_worker.get_mailbox_names.return_value = defer(['fol1'])
+        mock_worker.get_messages_in_folder.return_value = defer([6, 8])
+        mock_worker.get_message_headers.return_value = defer(Mock())
+
+        account.perform_update()
+
+        fol1 = account.get_folder('fol1')
+        self.assertEqual(set(m.msg_id for m in fol1.list_messages()),
+                         set([6, 8]))
