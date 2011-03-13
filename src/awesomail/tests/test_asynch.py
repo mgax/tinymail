@@ -17,3 +17,15 @@ class AsynchJobTest(unittest.TestCase):
         MyJob().start()
 
         self.assertEqual(out, {'result': 13})
+
+    def test_exception_in_job(self):
+        from awesomail.asynch import AsynchJob
+        class MyJob(AsynchJob):
+            @monocle.o
+            def do_stuff(self):
+                raise ValueError('ha!')
+
+        job = MyJob()
+        job.start()
+        self.assertTrue(isinstance(job.failure, ValueError))
+        self.assertEqual(job.failure.message, 'ha!')
