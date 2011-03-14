@@ -1,5 +1,6 @@
 from monocle import _o
-from asynch import AsynchJob
+from asynch import AsynchJob, start_worker
+from imap_worker import ImapWorker
 
 class Account(object):
     def __init__(self):
@@ -31,7 +32,7 @@ class Message(object):
         self.msg_id = msg_id
 
 def get_worker():
-    pass
+    return start_worker(ImapWorker())
 
 class AccountUpdateJob(AsynchJob):
     def __init__(self, account):

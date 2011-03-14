@@ -38,6 +38,7 @@ class AccountUpdateTest(unittest.TestCase):
     @patch('awesomail.account.get_worker')
     def test_list_folders(self, mock_get_worker):
         from awesomail.account import Account
+        from awesomail.imap_worker import ImapWorker
         folder_names = ['fol1', 'fol2']
         account = Account()
         mock_worker = Mock()
@@ -53,8 +54,9 @@ class AccountUpdateTest(unittest.TestCase):
     @patch('awesomail.account.get_worker')
     def test_list_messages(self, mock_get_worker):
         from awesomail.account import Account
+        from awesomail.imap_worker import ImapWorker
         account = Account()
-        mock_worker = Mock()
+        mock_worker = Mock(spec=ImapWorker)
         mock_get_worker.return_value = defer(mock_worker)
         mock_worker.get_mailbox_names.return_value = defer(['fol1'])
         mock_worker.get_messages_in_folder.return_value = defer([6, 8])
