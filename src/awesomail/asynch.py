@@ -28,9 +28,12 @@ def worker_loop(in_queue, worker):
         msg = in_queue.get()
         if msg is None:
             return
-        callback, method, args, kwargs = msg
-        result = getattr(worker, method)(*args, **kwargs)
-        call_on_main_thread(callback, result)
+        try:
+            callback, method, args, kwargs = msg
+            result = getattr(worker, method)(*args, **kwargs)
+            call_on_main_thread(callback, result)
+        except Exception, e:
+            call_on_main_thread(callback, e)
 
 class AsynchWorkerProxy(object):
     def __init__(self, in_queue, thread):

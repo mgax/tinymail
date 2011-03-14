@@ -70,4 +70,17 @@ class AsynchWorkerTest(unittest.TestCase):
 
         self.assertEqual(d.result, 13)
 
-    # TODO test handling of exceptions from worker (incl. missing methods)
+    def test_exception(self):
+        from awesomail.asynch import start_worker
+        class MyWorker(object):
+            def freak_out(self):
+                raise ValueError('hi')
+
+        try:
+            worker = start_worker(MyWorker())
+            d = worker.freak_out()
+        finally:
+            worker.done()
+
+        self.assertTrue(isinstance(d.result, ValueError))
+        self.assertEqual(d.result.message, 'hi')
