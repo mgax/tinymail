@@ -11,6 +11,8 @@ searchuid_pattern = re.compile(r'(?P<index>\d+)\s+\(UID\s*(?P<uid>\d+)'
 
 class ImapWorker(object):
     def get_mailbox_names(self):
+        """ Get a list of all mailbox names in the current account. """
+
         status, entries = self.conn.list()
         assert status == 'OK'
 
@@ -24,6 +26,10 @@ class ImapWorker(object):
         return paths
 
     def get_messages_in_folder(self, folder_name):
+        """
+        Select folder `folder_name`; return folder status + message flags.
+        """
+
         status, count = self.conn.select(folder_name, readonly=True)
         assert status == 'OK'
 
