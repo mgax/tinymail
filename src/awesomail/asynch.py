@@ -3,6 +3,12 @@ import threading
 import logging
 import monocle
 
+try:
+    from asynch_cocoa import call_on_main_thread
+except ImportError:
+    def call_on_main_thread(callback, *args, **kwargs):
+        raise NotImplementedError
+
 log = logging.getLogger(__name__)
 
 class AsynchJob(object):
@@ -22,9 +28,6 @@ class AsynchJob(object):
     @monocle.o
     def do_stuff(self):
         pass
-
-def call_on_main_thread(callback, result):
-    raise NotImplementedError
 
 def worker_loop(in_queue, worker):
     while True:
