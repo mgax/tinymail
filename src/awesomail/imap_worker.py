@@ -1,4 +1,5 @@
 import re
+import imaplib
 
 list_pattern = re.compile(r'^\((?P<flags>[^\)]*)\) '
                           r'"(?P<delim>[^"]*)" '
@@ -10,6 +11,10 @@ searchuid_pattern = re.compile(r'(?P<index>\d+)\s+\(UID\s*(?P<uid>\d+)'
                                r'\s+FLAGS \((?P<flags>[^\)]*)\)\)$')
 
 class ImapWorker(object):
+    def connect(self, host, login_name, login_pass):
+        self.conn = imaplib.IMAP4_SSL(host)
+        self.conn.login(login_name, login_pass)
+
     def get_mailbox_names(self):
         """ Get a list of all mailbox names in the current account. """
 
