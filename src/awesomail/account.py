@@ -3,8 +3,13 @@ from asynch import AsynchJob, start_worker
 from imap_worker import ImapWorker
 
 class Account(object):
-    def __init__(self):
+    def __init__(self, config):
+        self.config = config
         self._folders = {}
+
+    def get_imap_config(self):
+        return dict( (k, self.config[k]) for k in
+                     ('host', 'login_name', 'login_pass') )
 
     def list_folders(self):
         return self._folders.itervalues()
@@ -40,7 +45,8 @@ class AccountUpdateJob(AsynchJob):
 
     @_o
     def do_stuff(self):
-        worker = yield get_worker()
+        worker = get_worker()
+        yield worker.connect(**self.account.get_imap_config())
         mailbox_names = yield worker.get_mailbox_names()
         for name in mailbox_names:
             if name not in self.account._folders:

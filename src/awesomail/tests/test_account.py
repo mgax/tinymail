@@ -5,7 +5,7 @@ from monocle.callback import defer
 class AccountTest(unittest.TestCase):
     def test_list_folders(self):
         from awesomail.account import Account
-        account = Account()
+        account = Account({})
         fol1, fol2 = Mock(), Mock()
         account._folders = {'fol1': fol1, 'fol2': fol2}
 
@@ -15,7 +15,7 @@ class AccountTest(unittest.TestCase):
 
     def test_get_folder(self):
         from awesomail.account import Account
-        account = Account()
+        account = Account({})
         fol1, fol2 = Mock(), Mock()
         account._folders = {'fol1': fol1, 'fol2': fol2}
 
@@ -35,14 +35,21 @@ class FolderTest(unittest.TestCase):
         self.assertEqual(messages, [msg1, msg2])
 
 class AccountUpdateTest(unittest.TestCase):
+    config_for_test = {
+        'host': 'test_host',
+        'login_name': 'test_username',
+        'login_pass': 'test_password',
+    }
+
     @patch('awesomail.account.get_worker')
     def test_list_folders(self, mock_get_worker):
         from awesomail.account import Account
         from awesomail.imap_worker import ImapWorker
         folder_names = ['fol1', 'fol2']
-        account = Account()
+        account = Account(self.config_for_test)
         mock_worker = Mock()
-        mock_get_worker.return_value = defer(mock_worker)
+        mock_get_worker.return_value = mock_worker
+        mock_worker.connect.return_value = defer(None)
         mock_worker.get_mailbox_names.return_value = defer(folder_names)
         mock_worker.get_messages_in_folder.return_value = defer([])
 
@@ -55,9 +62,10 @@ class AccountUpdateTest(unittest.TestCase):
     def test_list_messages(self, mock_get_worker):
         from awesomail.account import Account
         from awesomail.imap_worker import ImapWorker
-        account = Account()
+        account = Account(self.config_for_test)
         mock_worker = Mock(spec=ImapWorker)
-        mock_get_worker.return_value = defer(mock_worker)
+        mock_get_worker.return_value = mock_worker
+        mock_worker.connect.return_value = defer(None)
         mock_worker.get_mailbox_names.return_value = defer(['fol1'])
         mock_worker.get_messages_in_folder.return_value = defer([6, 8])
         mock_worker.get_message_headers.return_value = defer(Mock())
