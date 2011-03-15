@@ -55,6 +55,8 @@ class AccountUpdateJob(AsynchJob):
         for name in mailbox_names:
             yield self.update_folder(worker, self.account._folders[name])
 
+        yield worker.disconnect()
+
     @_o
     def update_folder(self, worker, folder):
         message_ids = yield worker.get_messages_in_folder(folder.name)

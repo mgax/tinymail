@@ -52,6 +52,7 @@ class AccountUpdateTest(unittest.TestCase):
         mock_worker.connect.return_value = defer(None)
         mock_worker.get_mailbox_names.return_value = defer(folder_names)
         mock_worker.get_messages_in_folder.return_value = defer([])
+        mock_worker.disconnect.return_value = defer(None)
 
         account.perform_update()
 
@@ -69,6 +70,7 @@ class AccountUpdateTest(unittest.TestCase):
         mock_worker.get_mailbox_names.return_value = defer(['fol1'])
         mock_worker.get_messages_in_folder.return_value = defer([6, 8])
         mock_worker.get_message_headers.return_value = defer(Mock())
+        mock_worker.disconnect.return_value = defer(None)
 
         account.perform_update()
 

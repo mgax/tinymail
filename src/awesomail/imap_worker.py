@@ -15,6 +15,9 @@ class ImapWorker(object):
         self.conn = imaplib.IMAP4_SSL(host)
         self.conn.login(login_name, login_pass)
 
+    def disconnect(self):
+        self.conn.shutdown()
+
     def get_mailbox_names(self):
         """ Get a list of all mailbox names in the current account. """
 
