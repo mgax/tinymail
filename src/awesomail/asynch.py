@@ -14,7 +14,10 @@ class AsynchJob(object):
             yield self.do_stuff()
         except Exception, e:
             self.failure = e
-            log.exception("Error in asynch job")
+            if hasattr(e, '_monocle'):
+                log.error("%s\n%s", str(e), monocle.core.format_tb(e))
+            else:
+                log.exception(e)
 
     @monocle.o
     def do_stuff(self):
