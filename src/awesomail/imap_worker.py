@@ -59,5 +59,27 @@ class ImapWorker(object):
 
         return mbox_status, message_data
 
-    def get_message_headers(self, folder_name, msg_id):
-        raise NotImplementedError
+    def get_message_headers(self, message_indices):
+        """ Get headers of specified messagse from current folder. """
+
+        msgs = ','.join(map(str, message_indices))
+        status, data = self.conn.fetch(msgs, '(BODY.PEEK[HEADER] FLAGS)')
+        assert status == 'OK'
+
+        def iter_fragments(data):
+            data = iter(data)
+            while True:
+                fragment = next(data)
+                assert len(fragment) == 2, 'unexpected fragment layout'
+                yield fragment
+                skip = next(data, None)
+                assert skip == ')', 'bad closing'
+
+        headers_by_index = {}
+        for fragment in iter_fragments(data):
+            preamble, mime_headers = fragment
+            assert 'BODY[HEADER]' in preamble, 'bad preamble'
+            message_index = int(preamble.split(' ', 1)[0])
+            headers_by_index[message_index] = mime_headers
+
+        return headers_by_index
