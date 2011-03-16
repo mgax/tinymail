@@ -72,7 +72,7 @@ def mock_worker(**folders):
     worker.disconnect.return_value = defer(None)
 
     with patch('awesomail.account.get_worker', Mock(return_value=worker)):
-        yield
+        yield worker
 
 class AccountUpdateTest(unittest.TestCase):
     config_for_test = {
@@ -102,3 +102,16 @@ class AccountUpdateTest(unittest.TestCase):
         fol1 = account.get_folder('fol1')
         self.assertEqual(set(m.msg_id for m in fol1.list_messages()),
                          set([6, 8]))
+
+    def test_load_full_message(self):
+        from awesomail.account import Account
+        account = Account(self.config_for_test)
+
+        with mock_worker(fol1={6: None}) as worker:
+            account.perform_update()
+            message = account.get_folder('fol1')._messages[6]
+            mime_message = "Subject: hi\r\n\r\nHello world!"
+            worker.get_message_body.return_value = defer(mime_message)
+            message.load_full()
+
+        self.assertEqual(message.full.get_payload(), 'Hello world!')

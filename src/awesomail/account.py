@@ -38,6 +38,12 @@ class Message(object):
         self.msg_id = msg_id
         self.flags = flags
         self.headers = headers
+        self.full = None
+
+    def load_full(self):
+        job = MessageLoadFullJob(self)
+        job.start()
+        assert job.failure is None
 
 def get_worker():
     return start_worker(ImapWorker())
@@ -79,3 +85,23 @@ class AccountUpdateJob(AsynchJob):
             msg_headers = email.message_from_string(msg_headers_src)
             folder._messages[msg_uid] = Message(folder, msg_uid,
                                                 msg_flags, msg_headers)
+
+class MessageLoadFullJob(AsynchJob):
+    def __init__(self, message):
+        self.message = message
+
+    @_o
+    def do_stuff(self):
+        worker = get_worker()
+        config = dict( (k, self.message.folder.account.config[k]) for k in
+                       ('host', 'login_name', 'login_pass') )
+        yield worker.connect(**config)
+
+        mbox_status, message_data = yield worker.get_messages_in_folder(self.message.folder.name)
+        uuid_to_index = {}
+        for msg_uid, msg_info in message_data.iteritems():
+            msg_index = msg_info['index']
+            uuid_to_index[msg_uid] = msg_index
+
+        body = yield worker.get_message_body(uuid_to_index[self.message.msg_id])
+        self.message.full = email.message_from_string(body)
