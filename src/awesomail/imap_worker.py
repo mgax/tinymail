@@ -91,3 +91,10 @@ class ImapWorker(object):
             headers_by_index[message_index] = mime_headers
 
         return headers_by_index
+
+    def get_message_body(self, message_index):
+        status, data = self.conn.fetch(str(message_index), '(RFC822)')
+        assert status == 'OK'
+        assert len(data) == 2 and data[1] == ')'
+        assert isinstance(data[0], tuple) and len(data[0]) == 2
+        return data[0][1]

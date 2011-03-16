@@ -84,3 +84,13 @@ class ImapWorkerTest(unittest.TestCase):
         imap_conn.fetch.assert_called_once_with('1,2,5',
                                                 '(BODY.PEEK[HEADER] FLAGS)')
         self.assertEqual(header_by_index, {1: hdr, 2: hdr, 5: hdr})
+
+    def test_get_message_body(self):
+        worker, imap_conn = self._worker_with_fake_imap()
+        response_data = [('5 (RFC822 {7}', 'ZE BODY'), ')']
+        imap_conn.fetch.return_value = ('OK', response_data)
+
+        message_body = worker.get_message_body(5)
+
+        imap_conn.fetch.assert_called_once_with('5', '(RFC822)')
+        self.assertEqual(message_body, 'ZE BODY')
