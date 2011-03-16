@@ -1,3 +1,4 @@
+import email
 from monocle import _o
 from asynch import AsynchJob, start_worker
 from imap_worker import ImapWorker
@@ -32,9 +33,11 @@ class Folder(object):
         return self._messages.itervalues()
 
 class Message(object):
-    def __init__(self, folder, msg_id, headers):
+    def __init__(self, folder, msg_id, flags, headers):
         self.folder = folder
         self.msg_id = msg_id
+        self.flags = flags
+        self.headers = headers
 
 def get_worker():
     return start_worker(ImapWorker())
@@ -59,12 +62,20 @@ class AccountUpdateJob(AsynchJob):
 
     @_o
     def update_folder(self, worker, folder):
-        message_ids = yield worker.get_messages_in_folder(folder.name)
-        new_message_ids = set(message_ids) - set(folder._messages)
-        for msg_id in new_message_ids:
-            yield self.fetch_message_headers(worker, folder, msg_id)
+        mbox_status, message_data = yield worker.get_messages_in_folder(folder.name)
+        new_message_ids = set(message_data) - set(folder._messages)
 
-    @_o
-    def fetch_message_headers(self, worker, folder, msg_id):
-        headers = yield worker.get_message_headers(folder.name, msg_id)
-        folder._messages[msg_id] = Message(folder, msg_id, headers)
+        new_indices = set()
+        index_to_uuid = {}
+        for msg_uid, msg_info in message_data.iteritems():
+            msg_index = msg_info['index']
+            new_indices.add(msg_index)
+            index_to_uuid[msg_index] = msg_uid
+
+        headers_by_index = yield worker.get_message_headers(new_indices)
+        for msg_index, msg_headers_src in headers_by_index.iteritems():
+            msg_uid = index_to_uuid[msg_index]
+            msg_flags = message_data[msg_uid]['flags']
+            msg_headers = email.message_from_string(msg_headers_src)
+            folder._messages[msg_uid] = Message(folder, msg_uid,
+                                                msg_flags, msg_headers)

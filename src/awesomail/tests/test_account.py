@@ -1,5 +1,6 @@
 from mock import Mock, patch
 import unittest
+from contextlib import contextmanager
 from monocle.callback import defer
 
 class AccountTest(unittest.TestCase):
@@ -34,6 +35,45 @@ class FolderTest(unittest.TestCase):
 
         self.assertEqual(messages, [msg1, msg2])
 
+@contextmanager
+def mock_worker(**folders):
+    from awesomail.imap_worker import ImapWorker
+    worker = Mock(spec=ImapWorker)
+    state = {}
+
+    messages_in_folder = {}
+    message_headers_in_folder = {}
+    for name in folders:
+        messages = {}
+        message_headers = {}
+        for i, (msg_uid, msg_spec) in enumerate(folders[name].iteritems()):
+            messages[msg_uid] = {'index': i, 'flags': ()}
+            message_headers[i] = "PLACEHOLDER HEADER"
+        messages_in_folder[name] = messages
+        message_headers_in_folder[name] = message_headers
+
+    worker.connect.return_value = defer(None)
+
+    worker.get_mailbox_names.return_value = defer(list(folders))
+
+    def get_messages_in_folder(name):
+        state['name'] = name
+        return defer([{}, messages_in_folder[name]])
+    worker.get_messages_in_folder.side_effect = get_messages_in_folder
+
+    def get_message_headers(indices):
+        name = state['name']
+        message_headers = {}
+        for i in indices:
+            message_headers[i] = message_headers_in_folder[name][i]
+        return defer(message_headers)
+    worker.get_message_headers.side_effect = get_message_headers
+
+    worker.disconnect.return_value = defer(None)
+
+    with patch('awesomail.account.get_worker', Mock(return_value=worker)):
+        yield
+
 class AccountUpdateTest(unittest.TestCase):
     config_for_test = {
         'host': 'test_host',
@@ -41,38 +81,23 @@ class AccountUpdateTest(unittest.TestCase):
         'login_pass': 'test_password',
     }
 
-    @patch('awesomail.account.get_worker')
-    def test_list_folders(self, mock_get_worker):
+    def test_list_folders(self):
         from awesomail.account import Account
-        from awesomail.imap_worker import ImapWorker
-        folder_names = ['fol1', 'fol2']
         account = Account(self.config_for_test)
-        mock_worker = Mock()
-        mock_get_worker.return_value = mock_worker
-        mock_worker.connect.return_value = defer(None)
-        mock_worker.get_mailbox_names.return_value = defer(folder_names)
-        mock_worker.get_messages_in_folder.return_value = defer([])
-        mock_worker.disconnect.return_value = defer(None)
+        folders = {'fol1': {}, 'fol2': {}}
 
-        account.perform_update()
+        with mock_worker(**folders):
+            account.perform_update()
 
         self.assertEqual(set(f.name for f in account.list_folders()),
-                         set(folder_names))
+                         set(folders))
 
-    @patch('awesomail.account.get_worker')
-    def test_list_messages(self, mock_get_worker):
+    def test_list_messages(self):
         from awesomail.account import Account
-        from awesomail.imap_worker import ImapWorker
         account = Account(self.config_for_test)
-        mock_worker = Mock(spec=ImapWorker)
-        mock_get_worker.return_value = mock_worker
-        mock_worker.connect.return_value = defer(None)
-        mock_worker.get_mailbox_names.return_value = defer(['fol1'])
-        mock_worker.get_messages_in_folder.return_value = defer([6, 8])
-        mock_worker.get_message_headers.return_value = defer(Mock())
-        mock_worker.disconnect.return_value = defer(None)
 
-        account.perform_update()
+        with mock_worker(fol1={6: None, 8: None}):
+            account.perform_update()
 
         fol1 = account.get_folder('fol1')
         self.assertEqual(set(m.msg_id for m in fol1.list_messages()),
