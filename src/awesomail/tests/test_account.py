@@ -2,6 +2,7 @@ from mock import Mock, patch
 import unittest
 from contextlib import contextmanager
 from monocle.callback import defer
+from blinker import signal
 
 class AccountTest(unittest.TestCase):
     def test_list_folders(self):
@@ -87,21 +88,27 @@ class AccountUpdateTest(unittest.TestCase):
         folders = {'fol1': {}, 'fol2': {}}
 
         with mock_worker(**folders):
-            account.perform_update()
+            signal_log = []
+            with signal('account-updated').connected_to(signal_log.append):
+                account.perform_update()
 
         self.assertEqual(set(f.name for f in account.list_folders()),
                          set(folders))
+        self.assertEqual(signal_log, [account])
 
     def test_list_messages(self):
         from awesomail.account import Account
         account = Account(self.config_for_test)
 
         with mock_worker(fol1={6: None, 8: None}):
-            account.perform_update()
+            signal_log = []
+            with signal('folder-updated').connected_to(signal_log.append):
+                account.perform_update()
 
         fol1 = account.get_folder('fol1')
         self.assertEqual(set(m.msg_id for m in fol1.list_messages()),
                          set([6, 8]))
+        self.assertEqual(signal_log, [fol1])
 
     def test_load_full_message(self):
         from awesomail.account import Account
@@ -112,6 +119,9 @@ class AccountUpdateTest(unittest.TestCase):
             message = account.get_folder('fol1')._messages[6]
             mime_message = "Subject: hi\r\n\r\nHello world!"
             worker.get_message_body.return_value = defer(mime_message)
-            message.load_full()
+            signal_log = []
+            with signal('message-updated').connected_to(signal_log.append):
+                message.load_full()
 
         self.assertEqual(message.full.get_payload(), 'Hello world!')
+        self.assertEqual(signal_log, [message])

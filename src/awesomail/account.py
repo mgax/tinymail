@@ -1,7 +1,11 @@
 import email
 from monocle import _o
+from blinker import signal
 from asynch import AsynchJob, start_worker
 from imap_worker import ImapWorker
+
+_signals = [signal(name) for name in
+            ('account-updated', 'folder-updated', 'message-updated')]
 
 class Account(object):
     def __init__(self, config):
@@ -61,6 +65,8 @@ class AccountUpdateJob(AsynchJob):
             if name not in self.account._folders:
                 self.account._folders[name] = Folder(self.account, name)
 
+        signal('account-updated').send(self.account)
+
         for name in mailbox_names:
             yield self.update_folder(worker, self.account._folders[name])
 
@@ -86,6 +92,8 @@ class AccountUpdateJob(AsynchJob):
             folder._messages[msg_uid] = Message(folder, msg_uid,
                                                 msg_flags, msg_headers)
 
+        signal('folder-updated').send(folder)
+
 class MessageLoadFullJob(AsynchJob):
     def __init__(self, message):
         self.message = message
@@ -105,3 +113,5 @@ class MessageLoadFullJob(AsynchJob):
 
         body = yield worker.get_message_body(uuid_to_index[self.message.msg_id])
         self.message.full = email.message_from_string(body)
+
+        signal('message-updated').send(self.message)
