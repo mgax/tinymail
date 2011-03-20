@@ -4,17 +4,17 @@ from mock import Mock, patch
 
 class ImapWorkerTest(unittest.TestCase):
     def _worker_with_fake_imap(self):
-        from awesomail.imap_worker import ImapWorker
+        from tinymail.imap_worker import ImapWorker
         worker = ImapWorker()
         imap_conn = worker.conn = Mock(spec=imaplib.IMAP4)
         return worker, imap_conn
 
-    @patch('awesomail.imap_worker.imaplib')
+    @patch('tinymail.imap_worker.imaplib')
     def test_connect(self, mock_imaplib):
         mock_conn = Mock(spec=imaplib.IMAP4)
         mock_imaplib.IMAP4_SSL.return_value = mock_conn
 
-        from awesomail.imap_worker import ImapWorker
+        from tinymail.imap_worker import ImapWorker
         worker = ImapWorker()
         worker.connect('test_host', 'test_login', 'test_pass')
 

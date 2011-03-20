@@ -4,14 +4,14 @@ import logging
 import monocle
 
 try:
-    from asynch_cocoa import call_on_main_thread
+    from async_cocoa import call_on_main_thread
 except ImportError:
     def call_on_main_thread(callback, *args, **kwargs):
         raise NotImplementedError
 
 log = logging.getLogger(__name__)
 
-class AsynchJob(object):
+class AsyncJob(object):
     failure = None
 
     @monocle.o
@@ -41,7 +41,7 @@ def worker_loop(in_queue, worker):
         except Exception, e:
             call_on_main_thread(callback, e)
 
-class AsynchWorkerProxy(object):
+class AsyncWorkerProxy(object):
     def __init__(self, in_queue, thread):
         self._in_queue = in_queue
         self._thread = thread
@@ -62,4 +62,4 @@ def start_worker(worker):
     in_queue = Queue.Queue()
     thread = threading.Thread(target=worker_loop, args=(in_queue, worker))
     thread.start()
-    return AsynchWorkerProxy(in_queue, thread)
+    return AsyncWorkerProxy(in_queue, thread)

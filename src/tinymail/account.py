@@ -1,7 +1,7 @@
 import email
 from monocle import _o
 from blinker import signal
-from asynch import AsynchJob, start_worker
+from async import AsyncJob, start_worker
 from imap_worker import ImapWorker
 
 _signals = [signal(name) for name in
@@ -52,7 +52,7 @@ class Message(object):
 def get_worker():
     return start_worker(ImapWorker())
 
-class AccountUpdateJob(AsynchJob):
+class AccountUpdateJob(AsyncJob):
     def __init__(self, account):
         self.account = account
 
@@ -94,7 +94,7 @@ class AccountUpdateJob(AsynchJob):
 
         signal('folder-updated').send(folder)
 
-class MessageLoadFullJob(AsynchJob):
+class MessageLoadFullJob(AsyncJob):
     def __init__(self, message):
         self.message = message
 

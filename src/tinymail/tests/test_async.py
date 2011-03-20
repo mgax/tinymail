@@ -6,11 +6,11 @@ from mock import patch
 def add_one(value):
     yield monocle.Return(value + 1)
 
-class AsynchJobTest(unittest.TestCase):
+class AsyncJobTest(unittest.TestCase):
     def test_simple_job(self):
         out = {}
-        from awesomail.asynch import AsynchJob
-        class MyJob(AsynchJob):
+        from tinymail.async import AsyncJob
+        class MyJob(AsyncJob):
             @monocle.o
             def do_stuff(self):
                 out['result'] = yield add_one(12)
@@ -20,8 +20,8 @@ class AsynchJobTest(unittest.TestCase):
         self.assertEqual(out, {'result': 13})
 
     def test_exception_in_job(self):
-        from awesomail.asynch import AsynchJob
-        class MyJob(AsynchJob):
+        from tinymail.async import AsyncJob
+        class MyJob(AsyncJob):
             @monocle.o
             def do_stuff(self):
                 raise ValueError('ha!')
@@ -31,10 +31,10 @@ class AsynchJobTest(unittest.TestCase):
         self.assertTrue(isinstance(job.failure, ValueError))
         self.assertEqual(job.failure.message, 'ha!')
 
-class AsynchWorkerTest(unittest.TestCase):
+class AsyncWorkerTest(unittest.TestCase):
     def setUp(self):
-        from awesomail import asynch
-        self._patch = patch.object(asynch, 'call_on_main_thread')
+        from tinymail import async
+        self._patch = patch.object(async, 'call_on_main_thread')
         m = self._patch.start()
         m.side_effect = lambda callback, result: callback(result)
 
@@ -43,7 +43,7 @@ class AsynchWorkerTest(unittest.TestCase):
 
     def test_input_queue(self):
         called = []
-        from awesomail.asynch import start_worker
+        from tinymail.async import start_worker
         class MyWorker(object):
             def plus(self, a, b):
                 called.append((a,b))
@@ -57,7 +57,7 @@ class AsynchWorkerTest(unittest.TestCase):
         self.assertEqual(called, [(3, 4)])
 
     def test_return_value(self):
-        from awesomail.asynch import start_worker
+        from tinymail.async import start_worker
         class MyWorker(object):
             def get_13(self):
                 return 13
@@ -71,7 +71,7 @@ class AsynchWorkerTest(unittest.TestCase):
         self.assertEqual(d.result, 13)
 
     def test_exception(self):
-        from awesomail.asynch import start_worker
+        from tinymail.async import start_worker
         class MyWorker(object):
             def freak_out(self):
                 raise ValueError('hi')

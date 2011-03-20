@@ -6,7 +6,7 @@ from blinker import signal
 
 class AccountTest(unittest.TestCase):
     def test_list_folders(self):
-        from awesomail.account import Account
+        from tinymail.account import Account
         account = Account({})
         fol1, fol2 = Mock(), Mock()
         account._folders = {'fol1': fol1, 'fol2': fol2}
@@ -16,7 +16,7 @@ class AccountTest(unittest.TestCase):
         self.assertEqual(folders, [fol1, fol2])
 
     def test_get_folder(self):
-        from awesomail.account import Account
+        from tinymail.account import Account
         account = Account({})
         fol1, fol2 = Mock(), Mock()
         account._folders = {'fol1': fol1, 'fol2': fol2}
@@ -27,7 +27,7 @@ class AccountTest(unittest.TestCase):
 
 class FolderTest(unittest.TestCase):
     def test_list_messages(self):
-        from awesomail.account import Folder
+        from tinymail.account import Folder
         folder = Folder(Mock(), 'fol1')
         msg1, msg2 = Mock(), Mock()
         folder._messages = {1: msg1, 2: msg2}
@@ -38,7 +38,7 @@ class FolderTest(unittest.TestCase):
 
 @contextmanager
 def mock_worker(**folders):
-    from awesomail.imap_worker import ImapWorker
+    from tinymail.imap_worker import ImapWorker
     worker = Mock(spec=ImapWorker)
     state = {}
 
@@ -72,7 +72,7 @@ def mock_worker(**folders):
 
     worker.disconnect.return_value = defer(None)
 
-    with patch('awesomail.account.get_worker', Mock(return_value=worker)):
+    with patch('tinymail.account.get_worker', Mock(return_value=worker)):
         yield worker
 
 class AccountUpdateTest(unittest.TestCase):
@@ -83,7 +83,7 @@ class AccountUpdateTest(unittest.TestCase):
     }
 
     def test_list_folders(self):
-        from awesomail.account import Account
+        from tinymail.account import Account
         account = Account(self.config_for_test)
         folders = {'fol1': {}, 'fol2': {}}
 
@@ -97,7 +97,7 @@ class AccountUpdateTest(unittest.TestCase):
         self.assertEqual(signal_log, [account])
 
     def test_list_messages(self):
-        from awesomail.account import Account
+        from tinymail.account import Account
         account = Account(self.config_for_test)
 
         with mock_worker(fol1={6: None, 8: None}):
@@ -111,7 +111,7 @@ class AccountUpdateTest(unittest.TestCase):
         self.assertEqual(signal_log, [fol1])
 
     def test_load_full_message(self):
-        from awesomail.account import Account
+        from tinymail.account import Account
         account = Account(self.config_for_test)
 
         with mock_worker(fol1={6: None}) as worker:
