@@ -101,18 +101,19 @@ class MessageLoadFullJob(AsyncJob):
 
     @_o
     def do_stuff(self):
+        message = self.message
         worker = get_worker()
-        config = dict( (k, self.message.folder.account.config[k]) for k in
+        config = dict( (k, message.folder.account.config[k]) for k in
                        ('host', 'login_name', 'login_pass') )
         yield worker.connect(**config)
 
-        mbox_status, message_data = yield worker.get_messages_in_folder(self.message.folder.name)
+        mbox_status, message_data = yield worker.get_messages_in_folder(message.folder.name)
         uuid_to_index = {}
         for msg_uid, msg_info in message_data.iteritems():
             msg_index = msg_info['index']
             uuid_to_index[msg_uid] = msg_index
 
-        body = yield worker.get_message_body(uuid_to_index[self.message.msg_id])
-        self.message.full = email.message_from_string(body)
+        body = yield worker.get_message_body(uuid_to_index[message.msg_id])
+        message.full = email.message_from_string(body)
 
-        signal('message-updated').send(self.message)
+        signal('message-updated').send(message)
