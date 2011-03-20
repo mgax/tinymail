@@ -106,7 +106,7 @@ class AccountUpdateTest(unittest.TestCase):
                 account.perform_update()
 
         fol1 = account.get_folder('fol1')
-        self.assertEqual(set(m.msg_id for m in fol1.list_messages()),
+        self.assertEqual(set(m.msg_uid for m in fol1.list_messages()),
                          set([6, 8]))
         self.assertEqual(signal_log, [fol1])
 

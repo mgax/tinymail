@@ -42,9 +42,9 @@ class Folder(object):
         return self._messages.itervalues()
 
 class Message(object):
-    def __init__(self, folder, msg_id, flags, headers):
+    def __init__(self, folder, msg_uid, flags, headers):
         self.folder = folder
-        self.msg_id = msg_id
+        self.msg_uid = msg_uid
         self.flags = flags
         self.headers = headers
         self.full = None
@@ -114,7 +114,7 @@ class MessageLoadFullJob(AsyncJob):
     def do_stuff(self):
         message = self.message
         log.debug("Loading full message %r in folder %r",
-                 message.msg_id, message.folder.name)
+                 message.msg_uid, message.folder.name)
         worker = get_worker()
         config = dict( (k, message.folder.account.config[k]) for k in
                        ('host', 'login_name', 'login_pass') )
@@ -126,7 +126,7 @@ class MessageLoadFullJob(AsyncJob):
             msg_index = msg_info['index']
             uuid_to_index[msg_uid] = msg_index
 
-        body = yield worker.get_message_body(uuid_to_index[message.msg_id])
+        body = yield worker.get_message_body(uuid_to_index[message.msg_uid])
         message.full = email.message_from_string(body)
 
         signal('message-updated').send(message)
