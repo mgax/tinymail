@@ -1,8 +1,13 @@
 import objc
 from Foundation import NSObject, NSURL, NSString, NSISOLatin1StringEncoding
 import AppKit
-
 from PyObjCTools import Debugging
+from blinker import signal
+from tinymail.account import Account
+
+_signals = [signal(name) for name in
+            ('ui-folder-selected', 'ui-message-selected')]
+
 
 class FolderListingItem(NSObject):
     @classmethod
@@ -11,16 +16,16 @@ class FolderListingItem(NSObject):
         item.folder = folder
         return item
 
+
 class FolderListingDelegate(NSObject):
     @classmethod
-    def create(cls, reg, outline_view, account):
+    def create(cls, outline_view, account):
         self = cls.new()
-        self.reg = reg
         self.outline_view = outline_view
         outline_view.setDataSource_(self)
         outline_view.setDelegate_(self)
-        self.reg.subscribe((account, 'folders_updated'),
-                           self.handle_folders_updated)
+        self.cb = lambda a: self.handle_folders_updated(a)
+        signal('account-updated').connect(self.cb)
         sel = self.handle_folders_updated
         return self
 
@@ -32,7 +37,7 @@ class FolderListingDelegate(NSObject):
         for item in self.items:
             item.release()
         self.items = [FolderListingItem.itemWithFolder_(f).retain()
-                      for f in account.folders]
+                      for f in account._folders.values()]
         self.outline_view.reloadData()
 
     def outlineView_numberOfChildrenOfItem_(self, outline_view, item):
@@ -51,7 +56,7 @@ class FolderListingDelegate(NSObject):
     def outlineView_objectValueForTableColumn_byItem_(self, outline_view,
                                                       tableColumn, item):
         assert isinstance(item, FolderListingItem)
-        return item.folder.imap_name
+        return item.folder.name
 
     def outlineView_shouldEditTableColumn_item_(self, outline_view,
                                                 tableColumn, item):
@@ -65,18 +70,21 @@ class FolderListingDelegate(NSObject):
         else:
             new_value = outline_view.itemAtRow_(row).folder
 
-        self.reg.notify('ui.folder_selected', folder=new_value)
+        signal('ui-folder-selected').send(new_value)
+
 
 class MessageListingDelegate(NSObject):
     @classmethod
-    def create(cls, reg, table_view):
+    def create(cls, table_view):
         self = cls.new()
-        self.reg = reg
         self.table_view = table_view
         table_view.setDelegate_(self)
         table_view.setDataSource_(self)
         self._set_up_columns()
-        self.reg.subscribe('ui.folder_selected', self.handle_folder_selected)
+        self.cb1 = lambda f: self.handle_folder_selected(f)
+        signal('ui-folder-selected').connect(self.cb1)
+        self.cb = lambda f: self.handle_messages_updated(f)
+        signal('folder-updated').connect(self.cb)
         return self
 
     def _set_up_columns(self):
@@ -93,22 +101,19 @@ class MessageListingDelegate(NSObject):
 
     def handle_folder_selected(self, folder):
         if self._folder is not None:
-            self.reg.unsubscribe((self._folder, 'messages_updated'),
-                                 self.handle_messages_updated)
+            pass
 
         self._folder = folder
         if self._folder is None:
             self.messages_updated({})
             return
 
-        self.messages_updated(self._folder.messages)
-        self.reg.subscribe((self._folder, 'messages_updated'),
-                           self.handle_messages_updated)
-        self._folder.update_if_needed()
+        self.messages_updated(self._folder._messages)
 
     def handle_messages_updated(self, folder):
-        assert folder is self._folder
-        self.messages_updated(folder.messages)
+        if folder is not self._folder:
+            return
+        self.messages_updated(folder._messages)
 
     def messages_updated(self, messages):
         self.messages = [msg for (uid, msg) in sorted(messages.iteritems())]
@@ -140,16 +145,19 @@ class MessageListingDelegate(NSObject):
         row = table_view.selectedRow()
         new_value = (None if row == -1 else self.messages[row])
 
-        self.reg.notify('ui.message_selected', message=new_value)
+        signal('ui-message-selected').send(new_value)
+
 
 class MessageViewDelegate(NSObject):
     @classmethod
-    def create(cls, reg, web_view):
+    def create(cls, web_view):
         self = cls.new()
-        self.reg = reg
         self.web_view = web_view
         self._message = None
-        self.reg.subscribe('ui.message_selected', self.handle_message_selected)
+        self.cb1 = lambda m: self.handle_message_selected(m)
+        signal('ui-message-selected').connect(self.cb1)
+        self.cb = lambda m: self.handle_message_updated(m)
+        signal('message-updated').connect(self.cb)
         return self
 
     def _configure_web_view(self):
@@ -160,10 +168,6 @@ class MessageViewDelegate(NSObject):
         web_view_prefs.setUsesPageCache_(False)
 
     def handle_message_selected(self, message):
-        if self._message is not None:
-            self.reg.unsubscribe((self._message, 'full_message'),
-                                 self.handle_full_message)
-
         self._message = message
         if self._message is None:
             self._update_view_with_string("")
@@ -171,9 +175,15 @@ class MessageViewDelegate(NSObject):
 
         self._update_view_with_string("Loading...")
         self._displayed = False
-        self.reg.subscribe((self._message, 'full_message'),
-                           self.handle_full_message)
-        self._message.request_fullmsg()
+        if self._message.full is None:
+            self._message.load_full()
+        else:
+            self.handle_full_message(self._message, self._message.full)
+
+    def handle_message_updated(self, message):
+        if self._message is not message:
+            return
+        self.handle_full_message(message, message.full)
 
     def handle_full_message(self, message, mime):
         assert message is self._message, ('%r is not %r' %
@@ -191,17 +201,17 @@ class MessageViewDelegate(NSObject):
         frame.loadData_MIMEType_textEncodingName_baseURL_(data, 'text/plain',
                                                           'latin-1', url)
 
+
 class ActivityDelegate(NSObject):
     @classmethod
-    def create(cls, reg, table_view):
+    def create(cls, table_view):
         self = cls.new()
-        self.reg = reg
         self.table_view = table_view
         table_view.setDelegate_(self)
         table_view.setDataSource_(self)
-        self.reg.subscribe('maildata.op_queued', self.handle_op_queued)
-        self.reg.subscribe('maildata.op_status', self.handle_op_status)
-        self.reg.subscribe('maildata.op_finished', self.handle_op_finished)
+        #self.reg.subscribe('maildata.op_queued', self.handle_op_queued)
+        #self.reg.subscribe('maildata.op_status', self.handle_op_status)
+        #self.reg.subscribe('maildata.op_finished', self.handle_op_finished)
         return self
 
     def init(self):
@@ -242,6 +252,7 @@ class ActivityDelegate(NSObject):
     def tableView_shouldEditTableColumn_row_(self, table_view, col, row):
         return False
 
+
 class tinymailAppDelegate(NSObject):
     window = objc.IBOutlet()
     foldersPane = objc.IBOutlet()
@@ -250,26 +261,19 @@ class tinymailAppDelegate(NSObject):
     activityTable = objc.IBOutlet()
 
     def applicationDidFinishLaunching_(self, notification):
-        if debug_mode:
-            Debugging.installPythonExceptionHandler()
-#        self._set_up_ui()
+        Debugging.installPythonExceptionHandler()
+        self.the_account = Account(read_config())
+        self._set_up_ui()
+        self.the_account.perform_update()
 
-#    def _set_up_ui(self):
-#        FolderListingDelegate.create(self.reg, self.foldersPane,
-#                                     self.the_account)
-#        MessageListingDelegate.create(self.reg, self.messagesPane)
-#        MessageViewDelegate.create(self.reg, self.messageView)
-#        ActivityDelegate.create(self.reg, self.activityTable)
-#
-#        self.window.orderWindow_relativeTo_(AppKit.NSWindowAbove,
-#                self.activityTable.window().windowNumber())
+    def _set_up_ui(self):
+        FolderListingDelegate.create(self.foldersPane, self.the_account)
+        MessageListingDelegate.create(self.messagesPane)
+        MessageViewDelegate.create(self.messageView)
 
     @objc.IBAction
     def doSync_(self, sender):
         self.the_account.sync_folders()
-
-    def applicationWillTerminate_(self, notification):
-        self.the_account.cleanup()
 
 def read_config():
     import os
@@ -278,6 +282,3 @@ def read_config():
     cfg_path = path.join(os.environ['HOME'], '.tinymail/account.json')
     with open(cfg_path, 'rb') as f:
         return json.loads(f.read())
-
-debug_mode = False
-# at build time 'debug_mode = True' gets appended if CONFIGURATION is 'Debug'
