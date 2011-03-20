@@ -110,6 +110,16 @@ class AccountUpdateTest(unittest.TestCase):
                          set([6, 8]))
         self.assertEqual(signal_log, [fol1])
 
+    def test_empty_folder(self):
+        from tinymail.account import Account
+        account = Account(self.config_for_test)
+
+        with mock_worker(fol1={}) as worker:
+            signal_log = []
+            account.perform_update()
+
+        self.assertFalse(worker.get_message_headers.called)
+
     def test_load_full_message(self):
         from tinymail.account import Account
         account = Account(self.config_for_test)

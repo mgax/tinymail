@@ -84,15 +84,16 @@ class AccountUpdateJob(AsyncJob):
             new_indices.add(msg_index)
             index_to_uuid[msg_index] = msg_uid
 
-        headers_by_index = yield worker.get_message_headers(new_indices)
-        for msg_index, msg_headers_src in headers_by_index.iteritems():
-            msg_uid = index_to_uuid[msg_index]
-            msg_flags = message_data[msg_uid]['flags']
-            msg_headers = email.message_from_string(msg_headers_src)
-            folder._messages[msg_uid] = Message(folder, msg_uid,
-                                                msg_flags, msg_headers)
+        if new_indices:
+            headers_by_index = yield worker.get_message_headers(new_indices)
+            for msg_index, msg_headers_src in headers_by_index.iteritems():
+                msg_uid = index_to_uuid[msg_index]
+                msg_flags = message_data[msg_uid]['flags']
+                msg_headers = email.message_from_string(msg_headers_src)
+                folder._messages[msg_uid] = Message(folder, msg_uid,
+                                                    msg_flags, msg_headers)
 
-        signal('folder-updated').send(folder)
+            signal('folder-updated').send(folder)
 
 class MessageLoadFullJob(AsyncJob):
     def __init__(self, message):
