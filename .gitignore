@@ -3,4 +3,6 @@
 *.mode2v3
 *.pbxuser
 *.pyc
+deps/*
+!deps/README.txt
 build/
