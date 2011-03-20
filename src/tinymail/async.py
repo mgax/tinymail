@@ -21,7 +21,8 @@ class AsyncJob(object):
         except Exception, e:
             self.failure = e
             if hasattr(e, '_monocle'):
-                log.error("%s\n%s", str(e), monocle.core.format_tb(e))
+                log.error("%s\nMonocle-enhanced %s",
+                          str(e), monocle.core.format_tb(e))
             else:
                 log.exception(e)
 

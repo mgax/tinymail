@@ -1,14 +1,19 @@
 import email
+import logging
 from monocle import _o
 from blinker import signal
 from async import AsyncJob, start_worker
 from imap_worker import ImapWorker
+
+log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
 
 _signals = [signal(name) for name in
             ('account-updated', 'folder-updated', 'message-updated')]
 
 class Account(object):
     def __init__(self, config):
+        self.name = "The Account"
         self.config = config
         self._folders = {}
 
@@ -58,6 +63,7 @@ class AccountUpdateJob(AsyncJob):
 
     @_o
     def do_stuff(self):
+        log.debug("Begin update of account %r", self.account.name)
         worker = get_worker()
         yield worker.connect(**self.account.get_imap_config())
         mailbox_names = yield worker.get_mailbox_names()
@@ -71,9 +77,11 @@ class AccountUpdateJob(AsyncJob):
             yield self.update_folder(worker, self.account._folders[name])
 
         yield worker.disconnect()
+        log.info("Update finished for account %r", self.account.name)
 
     @_o
     def update_folder(self, worker, folder):
+        log.debug("Updating folder %r", folder.name)
         mbox_status, message_data = yield worker.get_messages_in_folder(folder.name)
         new_message_ids = set(message_data) - set(folder._messages)
 
@@ -95,6 +103,9 @@ class AccountUpdateJob(AsyncJob):
 
             signal('folder-updated').send(folder)
 
+        log.info("Finished updating folder %r: %d messages (%d new)",
+                 folder.name, len(message_data), len(new_indices))
+
 class MessageLoadFullJob(AsyncJob):
     def __init__(self, message):
         self.message = message
@@ -102,6 +113,8 @@ class MessageLoadFullJob(AsyncJob):
     @_o
     def do_stuff(self):
         message = self.message
+        log.debug("Loading full message %r in folder %r",
+                 message.msg_id, message.folder.name)
         worker = get_worker()
         config = dict( (k, message.folder.account.config[k]) for k in
                        ('host', 'login_name', 'login_pass') )

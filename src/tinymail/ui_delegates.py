@@ -1,3 +1,4 @@
+import logging
 import objc
 from Foundation import NSObject, NSURL, NSString, NSISOLatin1StringEncoding
 import AppKit
@@ -261,10 +262,14 @@ class tinymailAppDelegate(NSObject):
     activityTable = objc.IBOutlet()
 
     def applicationDidFinishLaunching_(self, notification):
-        Debugging.installPythonExceptionHandler()
+        self._set_up_debug()
         self.the_account = Account(read_config())
         self._set_up_ui()
         self.the_account.perform_update()
+
+    def _set_up_debug(self):
+        Debugging.installPythonExceptionHandler()
+        logging.basicConfig(level=logging.INFO)
 
     def _set_up_ui(self):
         FolderListingDelegate.create(self.foldersPane, self.the_account)
