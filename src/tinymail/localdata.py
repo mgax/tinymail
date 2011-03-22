@@ -1,5 +1,11 @@
 from contextlib import contextmanager
 
+def flatten(flags):
+    return ' '.join(sorted(flags))
+
+def unflatten(flat_flags):
+    return set(flat_flags.split())
+
 class DBFolder(object):
     def __init__(self, account, name):
         self._account = account
@@ -13,17 +19,22 @@ class DBFolder(object):
         insert_query = ("insert into message"
                         "(account, folder, uid, flags, headers) "
                         "values (?, ?, ?, ?, ?)")
-        flat_flags = ' '.join(sorted(flags))
-        row = (self._account.name, self.name, uid, flat_flags, headers)
+        row = (self._account.name, self.name, uid, flatten(flags), headers)
         self._execute(insert_query, row)
+
+    def set_message_flags(self, uid, flags):
+        # TODO check arguments
+        update_query = ("update message set uid = ? "
+                        "where account = ? and folder = ? and uid = ?")
+        row = (self._account.name, self.name, uid, flatten(flags))
+        self._execute(update_query, row)
 
     def list_messages(self):
         select_query = ("select uid, flags, headers from message "
                         "where account = ? and folder = ?")
         results = self._execute(select_query, (self._account.name, self.name))
         for uid, flat_flags, headers in results:
-            flags = set(flat_flags.split())
-            yield uid, flags, headers
+            yield uid, unflatten(flat_flags), headers
 
 class DBAccount(object):
     def __init__(self, db, name):

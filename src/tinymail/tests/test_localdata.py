@@ -47,3 +47,23 @@ class LocalDataTest(unittest.TestCase):
 
         messages = sorted(db_folder.list_messages())
         self.assertEqual(messages, [msg1, msg2])
+
+    def test_set_message_flags(self):
+        db = make_test_db()
+        db_account = db.get_account('some account name')
+        db_account.add_folder('archive')
+        db_folder = db_account.get_folder('archive')
+        msg1 = (13, set([r'\Seen']), "Subject: hi!")
+        msg2 = (15, set(), "Subject: message 2")
+
+        with db.transaction():
+            db_folder.add_message(*msg1)
+            db_folder.add_message(*msg2)
+
+        with db.transaction():
+            db_folder.set_message_flags(13, set([r'\Seen', r'\Answered']))
+
+        msg1bis = (13, set([r'\Seen', r'\Answered']), "Subject: hi!")
+
+        messages = sorted(db_folder.list_messages())
+        self.assertEqual(messages, [msg1, msg2])
