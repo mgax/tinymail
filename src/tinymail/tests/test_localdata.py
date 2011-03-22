@@ -35,9 +35,11 @@ class LocalDataTest(unittest.TestCase):
 
     def test_messages(self):
         db = make_test_db()
-        db_account = db.get_account('some account name')
-        db_account.add_folder('archive')
-        db_folder = db_account.get_folder('archive')
+        with db.transaction():
+            db_account = db.get_account('some account name')
+            db_account.add_folder('archive')
+            db_folder = db_account.get_folder('archive')
+
         msg1 = (13, set([r'\Seen']), "Subject: hi!")
         msg2 = (15, set(), "Subject: message 2")
 
@@ -50,9 +52,11 @@ class LocalDataTest(unittest.TestCase):
 
     def test_set_message_flags(self):
         db = make_test_db()
-        db_account = db.get_account('some account name')
-        db_account.add_folder('archive')
-        db_folder = db_account.get_folder('archive')
+        with db.transaction():
+            db_account = db.get_account('some account name')
+            db_account.add_folder('archive')
+            db_folder = db_account.get_folder('archive')
+
         msg1 = (13, set([r'\Seen']), "Subject: hi!")
         msg2 = (15, set(), "Subject: message 2")
 
@@ -67,3 +71,19 @@ class LocalDataTest(unittest.TestCase):
 
         messages = sorted(db_folder.list_messages())
         self.assertEqual(messages, [msg1, msg2])
+
+    def test_require_transactions(self):
+        db = make_test_db()
+        with db.transaction():
+            db_account = db.get_account('some account name')
+            db_account.add_folder('archive')
+            db_folder = db_account.get_folder('archive')
+            db_folder.set_message_flags(13, set([r'\Seen']))
+
+        self.assertRaises(AssertionError, db_account.add_folder, 'other')
+        self.assertRaises(AssertionError, db_folder.add_message,
+                          17, set([r'\Seen']), "Subject: smth")
+        self.assertRaises(AssertionError, db_folder.set_message_flags,
+                          13, set([r'\Seen', r'\Answered']))
+
+# TODO test with non-ascii headers. just in case.

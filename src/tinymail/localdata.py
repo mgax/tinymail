@@ -42,7 +42,7 @@ class DBAccount(object):
         self.name = name
 
     def _execute(self, *args, **kwargs):
-        return self._db._connection.execute(*args, **kwargs)
+        return self._db._execute(*args, **kwargs)
 
     def list_folders(self):
         select_query = "select name from folder where account = ?"
@@ -52,7 +52,6 @@ class DBAccount(object):
 
     def add_folder(self, name):
         # TODO check arguments
-        # TODO make sure we're in a transaction
         # TODO check if the folder already exists
         insert_query = "insert into folder(account, name) values (?, ?)"
         self._execute(insert_query, (self.name, name))
@@ -69,13 +68,25 @@ class DBAccount(object):
 class LocalDataDB(object):
     def __init__(self, connection):
         self._connection = connection
+        self._transaction = False
+
+    def _execute(self, *args, **kwargs):
+        modif_statements = ['insert', 'update', 'delete', 'replace']
+        if args[0].split(' ', 1)[0].lower() in modif_statements:
+            assert self._transaction
+        return self._connection.execute(*args, **kwargs)
 
     def get_account(self, name):
         return DBAccount(self, name)
 
     @contextmanager
     def transaction(self):
-        yield
+        with self._connection:
+            self._transaction = True
+            try:
+                yield
+            finally:
+                self._transaction = False
 
 def create_db_schema(connection):
     connection.execute("create table folder (account varchar, name varchar)")
