@@ -17,13 +17,15 @@ class DBFolder(object):
     def _execute(self, *args, **kwargs):
         return self._account._execute(*args, **kwargs)
 
-    def add_message(self, uid, flags, headers):
-        # TODO check arguments
+    def _count_messages(self, uid):
         select_query = ("select count(*) from message "
                         "where account = ? and folder = ? and uid = ?")
-        howmany = count_result(self._execute(select_query,
-                               (self._account.name, self.name, uid)))
-        if howmany > 0:
+        return count_result(self._execute(select_query,
+                            (self._account.name, self.name, uid)))
+
+    def add_message(self, uid, flags, headers):
+        # TODO check arguments
+        if self._count_messages(uid) > 0:
             msg = ("Folder %r in account %r already has a message with uid %r"
                    % (self._account.name, self.name, uid))
             raise AssertionError(msg)
@@ -35,6 +37,10 @@ class DBFolder(object):
 
     def set_message_flags(self, uid, flags):
         # TODO check arguments
+        if self._count_messages(uid) == 0:
+            msg = ("Folder %r in account %r has no message with uid %r"
+                   % (self._account.name, self.name, uid))
+            raise KeyError(msg)
         update_query = ("update message set uid = ? "
                         "where account = ? and folder = ? and uid = ?")
         row = (self._account.name, self.name, uid, flatten(flags))

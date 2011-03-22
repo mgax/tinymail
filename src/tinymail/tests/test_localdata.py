@@ -94,13 +94,24 @@ class LocalDataTest(unittest.TestCase):
         messages = sorted(db_folder.list_messages())
         self.assertEqual(messages, [msg1, msg2])
 
+    def test_set_message_flags_no_message(self):
+        db = make_test_db()
+        with db.transaction():
+            db_account = db.get_account('some account name')
+            db_account.add_folder('archive')
+            db_folder = db_account.get_folder('archive')
+
+        with db.transaction():
+            self.assertRaises(KeyError, db_folder.set_message_flags,
+                              13, set([r'\Seen', r'\Answered']))
+
     def test_require_transactions(self):
         db = make_test_db()
         with db.transaction():
             db_account = db.get_account('some account name')
             db_account.add_folder('archive')
             db_folder = db_account.get_folder('archive')
-            db_folder.set_message_flags(13, set([r'\Seen']))
+            db_folder.add_message(13, set([r'\Seen']), "Subject: hi!")
 
         self.assertRaises(AssertionError, db_account.add_folder, 'other')
         self.assertRaises(AssertionError, db_folder.add_message,
