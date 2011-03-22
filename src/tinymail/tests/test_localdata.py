@@ -32,3 +32,18 @@ class LocalDataTest(unittest.TestCase):
         names = set(f.name for f in db_account.list_folders())
         self.assertEqual(len(names), 2)
         self.assertEqual(names, set(['INBOX', 'archive']))
+
+    def test_messages(self):
+        db = make_test_db()
+        db_account = db.get_account('some account name')
+        db_account.add_folder('archive')
+        db_folder = db_account.get_folder('archive')
+        msg1 = (13, set([r'\Seen']), "Subject: hi!")
+        msg2 = (15, set(), "Subject: message 2")
+
+        with db.transaction():
+            db_folder.add_message(*msg1)
+            db_folder.add_message(*msg2)
+
+        messages = sorted(db_folder.list_messages())
+        self.assertEqual(messages, [msg1, msg2])

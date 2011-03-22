@@ -5,6 +5,26 @@ class DBFolder(object):
         self._account = account
         self.name = name
 
+    def _execute(self, *args, **kwargs):
+        return self._account._execute(*args, **kwargs)
+
+    def add_message(self, uid, flags, headers):
+        # TODO check arguments
+        insert_query = ("insert into message"
+                        "(account, folder, uid, flags, headers) "
+                        "values (?, ?, ?, ?, ?)")
+        flat_flags = ' '.join(sorted(flags))
+        row = (self._account.name, self.name, uid, flat_flags, headers)
+        self._execute(insert_query, row)
+
+    def list_messages(self):
+        select_query = ("select uid, flags, headers from message "
+                        "where account = ? and folder = ?")
+        results = self._execute(select_query, (self._account.name, self.name))
+        for uid, flat_flags, headers in results:
+            flags = set(flat_flags.split())
+            yield uid, flags, headers
+
 class DBAccount(object):
     def __init__(self, db, name):
         self._db = db
@@ -20,6 +40,7 @@ class DBAccount(object):
             yield DBFolder(self, name)
 
     def add_folder(self, name):
+        # TODO check arguments
         # TODO make sure we're in a transaction
         # TODO check if the folder already exists
         insert_query = "insert into folder(account, name) values (?, ?)"
@@ -47,3 +68,6 @@ class LocalDataDB(object):
 
 def create_db_schema(connection):
     connection.execute("create table folder (account varchar, name varchar)")
+    connection.execute("create table message ("
+                           "account varchar, folder varchar, "
+                           "uid integer, flags varchar, headers text)")
