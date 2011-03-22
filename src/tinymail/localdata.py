@@ -61,6 +61,11 @@ class DBAccount(object):
     def _execute(self, *args, **kwargs):
         return self._db._execute(*args, **kwargs)
 
+    def _count_folders(self, name):
+        select_query = ("select count(*) from folder "
+                        "where account = ? and name = ?")
+        return count_result(self._execute(select_query, (self.name, name)))
+
     def list_folders(self):
         select_query = "select name from folder where account = ?"
         cursor = self._execute(select_query, (self.name,))
@@ -69,20 +74,14 @@ class DBAccount(object):
 
     def add_folder(self, name):
         # TODO check arguments
-        select_query = ("select count(*) from folder "
-                        "where account = ? and name = ?")
-        howmany = count_result(self._execute(select_query, (self.name, name)))
-        if howmany > 0:
+        if self._count_folders(name) > 0:
             raise AssertionError("Account %r already has a folder named %r" %
                                  (self.name, name))
         insert_query = "insert into folder(account, name) values (?, ?)"
         self._execute(insert_query, (self.name, name))
 
     def get_folder(self, name):
-        select_query = ("select count(*) from folder "
-                        "where account = ? and name = ?")
-        howmany = count_result(self._execute(select_query, (self.name, name)))
-        if howmany == 0:
+        if self._count_folders(name) == 0:
             raise KeyError("Account %r has no folder named %r" %
                            (self.name, name))
         return DBFolder(self, name)
