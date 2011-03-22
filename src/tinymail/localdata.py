@@ -6,6 +6,9 @@ def flatten(flags):
 def unflatten(flat_flags):
     return set(flat_flags.split())
 
+def count_result(result_set):
+    return list(result_set)[0][0]
+
 class DBFolder(object):
     def __init__(self, account, name):
         self._account = account
@@ -52,14 +55,19 @@ class DBAccount(object):
 
     def add_folder(self, name):
         # TODO check arguments
-        # TODO check if the folder already exists
+        select_query = ("select count(*) from folder "
+                        "where account = ? and name = ?")
+        howmany = count_result(self._execute(select_query, (self.name, name)))
+        if howmany > 0:
+            raise AssertionError("Account %r already has a folder named %r" %
+                                 (self.name, name))
         insert_query = "insert into folder(account, name) values (?, ?)"
         self._execute(insert_query, (self.name, name))
 
     def get_folder(self, name):
         select_query = ("select count(*) from folder "
                         "where account = ? and name = ?")
-        howmany = list(self._execute(select_query, (self.name, name)))[0][0]
+        howmany = count_result(self._execute(select_query, (self.name, name)))
         if howmany == 0:
             raise KeyError("Account %r has no folder named %r" %
                            (self.name, name))

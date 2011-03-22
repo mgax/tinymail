@@ -20,6 +20,16 @@ class LocalDataTest(unittest.TestCase):
 
         self.assertRaises(KeyError, db_account.get_folder, 'no-such-folder')
 
+    def test_add_existing_folder(self):
+        db = make_test_db()
+        db_account = db.get_account('some account name')
+
+        with db.transaction():
+            db_account.add_folder('INBOX')
+
+        with db.transaction():
+            self.assertRaises(AssertionError, db_account.add_folder, 'INBOX')
+
     def test_list_folders(self):
         db = make_test_db()
         db_account = db.get_account('some account name')
