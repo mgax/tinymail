@@ -1,5 +1,5 @@
 import imaplib
-import unittest
+import unittest2 as unittest
 from mock import Mock, patch
 
 class ImapWorkerTest(unittest.TestCase):

@@ -1,5 +1,5 @@
 from mock import Mock, patch
-import unittest
+import unittest2 as unittest
 from contextlib import contextmanager
 from monocle.callback import defer
 from blinker import signal
