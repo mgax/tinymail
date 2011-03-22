@@ -19,6 +19,14 @@ class DBFolder(object):
 
     def add_message(self, uid, flags, headers):
         # TODO check arguments
+        select_query = ("select count(*) from message "
+                        "where account = ? and folder = ? and uid = ?")
+        howmany = count_result(self._execute(select_query,
+                               (self._account.name, self.name, uid)))
+        if howmany > 0:
+            msg = ("Folder %r in account %r already has a message with uid %r"
+                   % (self._account.name, self.name, uid))
+            raise AssertionError(msg)
         insert_query = ("insert into message"
                         "(account, folder, uid, flags, headers) "
                         "values (?, ?, ?, ?, ?)")
