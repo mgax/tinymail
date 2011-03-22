@@ -1,4 +1,3 @@
-import email
 import logging
 from monocle import _o
 from blinker import signal
@@ -42,12 +41,12 @@ class Folder(object):
         return self._messages.itervalues()
 
 class Message(object):
-    def __init__(self, folder, msg_uid, flags, headers):
+    def __init__(self, folder, msg_uid, flags, raw_headers):
         self.folder = folder
         self.msg_uid = msg_uid
         self.flags = flags
-        self.headers = headers
-        self.full = None
+        self.raw_headers = raw_headers
+        self.raw_full = None
 
     def load_full(self):
         job = MessageLoadFullJob(self)
@@ -94,12 +93,11 @@ class AccountUpdateJob(AsyncJob):
 
         if new_indices:
             headers_by_index = yield worker.get_message_headers(new_indices)
-            for msg_index, msg_headers_src in headers_by_index.iteritems():
+            for msg_index, msg_raw_headers in headers_by_index.iteritems():
                 msg_uid = index_to_uuid[msg_index]
                 msg_flags = message_data[msg_uid]['flags']
-                msg_headers = email.message_from_string(msg_headers_src)
                 folder._messages[msg_uid] = Message(folder, msg_uid,
-                                                    msg_flags, msg_headers)
+                                                    msg_flags, msg_raw_headers)
 
             signal('folder-updated').send(folder)
 
@@ -127,6 +125,6 @@ class MessageLoadFullJob(AsyncJob):
             uuid_to_index[msg_uid] = msg_index
 
         body = yield worker.get_message_body(uuid_to_index[message.msg_uid])
-        message.full = email.message_from_string(body)
+        message.raw_full = body
 
         signal('message-updated').send(message)

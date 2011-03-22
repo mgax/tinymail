@@ -123,15 +123,15 @@ class AccountUpdateTest(unittest.TestCase):
     def test_load_full_message(self):
         from tinymail.account import Account
         account = Account(self.config_for_test)
+        mime_message = "Subject: hi\r\n\r\nHello world!"
 
         with mock_worker(fol1={6: None}) as worker:
             account.perform_update()
             message = account.get_folder('fol1')._messages[6]
-            mime_message = "Subject: hi\r\n\r\nHello world!"
             worker.get_message_body.return_value = defer(mime_message)
             signal_log = []
             with signal('message-updated').connected_to(signal_log.append):
                 message.load_full()
 
-        self.assertEqual(message.full.get_payload(), 'Hello world!')
+        self.assertEqual(message.raw_full, mime_message)
         self.assertEqual(signal_log, [message])

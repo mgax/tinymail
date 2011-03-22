@@ -1,4 +1,5 @@
 import logging
+import email
 import objc
 from Foundation import NSObject, NSURL, NSString, NSISOLatin1StringEncoding
 import AppKit
@@ -126,14 +127,15 @@ class MessageListingDelegate(NSObject):
     def tableView_objectValueForTableColumn_row_(self, table_view, col, row):
         msg = self.messages[row]
         name = col.identifier()
+        headers = email.message_from_string(msg.raw_headers)
         if name == 'Subject':
-            subject = msg.headers['Subject']
+            subject = headers['Subject']
             if '\\Seen' in msg.flags:
                 return subject
             else:
                 return '* ' + subject
         elif name == 'From':
-            return msg.headers['From']
+            return headers['From']
 
     def tableView_shouldSelectTableColumn_(self, table_view, col):
         return False
@@ -176,15 +178,15 @@ class MessageViewDelegate(NSObject):
 
         self._update_view_with_string("Loading...")
         self._displayed = False
-        if self._message.full is None:
+        if self._message.raw_full is None:
             self._message.load_full()
         else:
-            self.handle_full_message(self._message, self._message.full)
+            self.handle_full_message(self._message, self._message.raw_full)
 
     def handle_message_updated(self, message):
         if self._message is not message:
             return
-        self.handle_full_message(message, message.full)
+        self.handle_full_message(message, message.raw_full)
 
     def handle_full_message(self, message, mime):
         assert message is self._message, ('%r is not %r' %
@@ -192,7 +194,7 @@ class MessageViewDelegate(NSObject):
         if self._displayed:
             return
         self._displayed = True
-        self._update_view_with_string(mime.as_string())
+        self._update_view_with_string(raw_full)
 
     def _update_view_with_string(self, str_data):
         ns_str = NSString.stringWithString_(str_data.decode('latin-1'))
