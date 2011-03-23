@@ -4,10 +4,21 @@ from contextlib import contextmanager
 from monocle.callback import defer
 from blinker import signal
 
+def account_for_test(config=None, db=None):
+    from tinymail.account import Account
+    if config is None:
+        config = {
+            'host': 'test_host',
+            'login_name': 'test_username',
+            'login_pass': 'test_password',
+        }
+    if db is None:
+        db = Mock()
+    return Account(config, db)
+
 class AccountTest(unittest.TestCase):
     def test_list_folders(self):
-        from tinymail.account import Account
-        account = Account({})
+        account = account_for_test()
         fol1, fol2 = Mock(), Mock()
         account._folders = {'fol1': fol1, 'fol2': fol2}
 
@@ -16,8 +27,7 @@ class AccountTest(unittest.TestCase):
         self.assertEqual(folders, [fol1, fol2])
 
     def test_get_folder(self):
-        from tinymail.account import Account
-        account = Account({})
+        account = account_for_test()
         fol1, fol2 = Mock(), Mock()
         account._folders = {'fol1': fol1, 'fol2': fol2}
 
@@ -76,15 +86,9 @@ def mock_worker(**folders):
         yield worker
 
 class AccountUpdateTest(unittest.TestCase):
-    config_for_test = {
-        'host': 'test_host',
-        'login_name': 'test_username',
-        'login_pass': 'test_password',
-    }
 
     def test_list_folders(self):
-        from tinymail.account import Account
-        account = Account(self.config_for_test)
+        account = account_for_test()
         folders = {'fol1': {}, 'fol2': {}}
 
         with mock_worker(**folders):
@@ -97,8 +101,7 @@ class AccountUpdateTest(unittest.TestCase):
         self.assertEqual(signal_log, [account])
 
     def test_list_messages(self):
-        from tinymail.account import Account
-        account = Account(self.config_for_test)
+        account = account_for_test()
 
         with mock_worker(fol1={6: None, 8: None}):
             signal_log = []
@@ -111,8 +114,7 @@ class AccountUpdateTest(unittest.TestCase):
         self.assertEqual(signal_log, [fol1])
 
     def test_empty_folder(self):
-        from tinymail.account import Account
-        account = Account(self.config_for_test)
+        account = account_for_test()
 
         with mock_worker(fol1={}) as worker:
             signal_log = []
@@ -121,8 +123,7 @@ class AccountUpdateTest(unittest.TestCase):
         self.assertFalse(worker.get_message_headers.called)
 
     def test_load_full_message(self):
-        from tinymail.account import Account
-        account = Account(self.config_for_test)
+        account = account_for_test()
         mime_message = "Subject: hi\r\n\r\nHello world!"
 
         with mock_worker(fol1={6: None}) as worker:
