@@ -6,6 +6,7 @@ import AppKit
 from PyObjCTools import Debugging
 from blinker import signal
 from tinymail.account import Account
+from tinymail.tests.test_localdata import make_test_db as demo_db
 
 _signals = [signal(name) for name in
             ('ui-folder-selected', 'ui-message-selected')]
@@ -265,7 +266,7 @@ class tinymailAppDelegate(NSObject):
 
     def applicationDidFinishLaunching_(self, notification):
         self._set_up_debug()
-        self.the_account = Account(read_config())
+        self.the_account = Account(read_config(), demo_db())
         self._set_up_ui()
         self.the_account.perform_update()
 

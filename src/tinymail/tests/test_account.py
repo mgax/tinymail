@@ -1,4 +1,4 @@
-from mock import Mock, patch
+from mock import Mock, MagicMock, patch
 import unittest2 as unittest
 from contextlib import contextmanager
 from monocle.callback import defer
@@ -13,7 +13,7 @@ def account_for_test(config=None, db=None):
             'login_pass': 'test_password',
         }
     if db is None:
-        db = Mock()
+        db = MagicMock()
     return Account(config, db)
 
 class AccountTest(unittest.TestCase):
@@ -136,3 +136,17 @@ class AccountUpdateTest(unittest.TestCase):
 
         self.assertEqual(message.raw_full, mime_message)
         self.assertEqual(signal_log, [message])
+
+class PersistenceTest(unittest.TestCase):
+    def test_folders(self):
+        from test_localdata import make_test_db
+        db = make_test_db()
+        account = account_for_test(db=db)
+
+        with mock_worker(myfolder={}) as worker:
+            account.perform_update()
+
+        account2 = account_for_test(db=db)
+        folders = list(account2.list_folders())
+        self.assertEqual(len(folders), 1)
+        self.assertEqual(folders[0].name, 'myfolder')

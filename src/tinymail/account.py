@@ -11,10 +11,12 @@ _signals = [signal(name) for name in
             ('account-updated', 'folder-updated', 'message-updated')]
 
 class Account(object):
-    def __init__(self, config):
+    def __init__(self, config, db):
         self.name = "The Account"
         self.config = config
+        self._db = db
         self._folders = {}
+        self._load_from_db()
 
     def get_imap_config(self):
         return dict( (k, self.config[k]) for k in
@@ -25,6 +27,13 @@ class Account(object):
 
     def get_folder(self, name):
         return self._folders[name]
+
+    def _load_from_db(self):
+        # TODO move this into an async job?
+        db_account = self._db.get_account('the-account')
+        for db_folder in db_account.list_folders():
+            name = db_folder.name
+            self._folders[name] = Folder(self, name)
 
     def perform_update(self):
         job = AccountUpdateJob(self)
@@ -66,9 +75,17 @@ class AccountUpdateJob(AsyncJob):
         worker = get_worker()
         yield worker.connect(**self.account.get_imap_config())
         mailbox_names = yield worker.get_mailbox_names()
-        for name in mailbox_names:
-            if name not in self.account._folders:
-                self.account._folders[name] = Folder(self.account, name)
+
+        new_mailbox_names = set(mailbox_names) - set(self.account._folders)
+        if new_mailbox_names:
+            db = self.account._db
+            db_account = db.get_account('the-account')
+            with db.transaction():
+                for name in new_mailbox_names:
+                    db_account.add_folder(name)
+                    self.account._folders[name] = Folder(self.account, name)
+
+        # TODO what happens with folders removed on server?
 
         signal('account-updated').send(self.account)
 
