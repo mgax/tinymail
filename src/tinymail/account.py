@@ -31,9 +31,14 @@ class Account(object):
     def _load_from_db(self):
         # TODO move this into an async job?
         db_account = self._db.get_account('the-account')
-        for db_folder in db_account.list_folders():
+        db_account_folders = list(db_account.list_folders())
+        for db_folder in db_account_folders:
             name = db_folder.name
-            self._folders[name] = Folder(self, name)
+            folder = Folder(self, name)
+            self._folders[name] = folder
+            for uid, flags, raw_headers in db_folder.list_messages():
+                message = Message(folder, uid, flags, raw_headers)
+                folder._messages[uid] = message
 
     def perform_update(self):
         job = AccountUpdateJob(self)
@@ -109,13 +114,21 @@ class AccountUpdateJob(AsyncJob):
             index_to_uuid[index] = uid
 
         if new_indices:
-            headers_by_index = yield worker.get_message_headers(new_indices)
-            for index, raw_headers in headers_by_index.iteritems():
-                uid = index_to_uuid[index]
-                flags = message_data[uid]['flags']
-                folder._messages[uid] = Message(folder, uid, flags, raw_headers)
+            db = self.account._db
+            db_account = db.get_account('the-account')
+            db_folder = db_account.get_folder(folder.name)
+            with db.transaction():
+                headers_by_index = yield worker.get_message_headers(new_indices)
+                for index, raw_headers in headers_by_index.iteritems():
+                    uid = index_to_uuid[index]
+                    flags = message_data[uid]['flags']
+                    db_folder.add_message(uid, flags, raw_headers)
+                    message = Message(folder, uid, flags, raw_headers)
+                    folder._messages[uid] = message
 
             signal('folder-updated').send(folder)
+
+        # TODO what happens with removed messages on server?
 
         log.info("Finished updating folder %r: %d messages (%d new)",
                  folder.name, len(message_data), len(new_indices))

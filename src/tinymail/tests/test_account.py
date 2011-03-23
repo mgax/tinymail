@@ -58,8 +58,10 @@ def mock_worker(**folders):
         messages = {}
         message_headers = {}
         for i, (uid, spec) in enumerate(folders[name].iteritems()):
-            messages[uid] = {'index': i, 'flags': ()}
-            message_headers[i] = "PLACEHOLDER HEADER"
+            if spec is None:
+                spec = (uid, set(), "PLACEHOLDER HEADER")
+            messages[uid] = {'index': i, 'flags': spec[1]}
+            message_headers[i] = spec[2]
         messages_in_folder[name] = messages
         message_headers_in_folder[name] = message_headers
 
@@ -150,3 +152,28 @@ class PersistenceTest(unittest.TestCase):
         folders = list(account2.list_folders())
         self.assertEqual(len(folders), 1)
         self.assertEqual(folders[0].name, 'myfolder')
+
+    def test_messages(self):
+        from test_localdata import make_test_db
+        db = make_test_db()
+        account = account_for_test(db=db)
+
+        msg4_data = (4, set([r'\Seen']), "Subject: test message")
+        msg22_data = (22, set([r'\Seen', r'\Answered']), "Subject: blah")
+
+        with mock_worker(myfolder={4: msg4_data, 22: msg22_data}) as worker:
+            account.perform_update()
+
+        account2 = account_for_test(db=db)
+        myfolder = account2.get_folder('myfolder')
+        messages = list(myfolder.list_messages())
+        messages.sort(key=lambda m: m.uid)
+
+        self.assertEqual(len(messages), 2)
+        msg4, msg22 = messages
+        self.assertEqual(msg4.uid, 4)
+        self.assertEqual(msg4.flags, set([r'\Seen']))
+        self.assertEqual(msg4.raw_headers, "Subject: test message")
+        self.assertEqual(msg22.uid, 22)
+        self.assertEqual(msg22.flags, set([r'\Seen', r'\Answered']))
+        self.assertEqual(msg22.raw_headers, "Subject: blah")
