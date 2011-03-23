@@ -50,9 +50,9 @@ class Folder(object):
         return self._messages.itervalues()
 
 class Message(object):
-    def __init__(self, folder, msg_uid, flags, raw_headers):
+    def __init__(self, folder, uid, flags, raw_headers):
         self.folder = folder
-        self.msg_uid = msg_uid
+        self.uid = uid
         self.flags = flags
         self.raw_headers = raw_headers
         self.raw_full = None
@@ -103,18 +103,17 @@ class AccountUpdateJob(AsyncJob):
 
         new_indices = set()
         index_to_uuid = {}
-        for msg_uid, msg_info in message_data.iteritems():
-            msg_index = msg_info['index']
-            new_indices.add(msg_index)
-            index_to_uuid[msg_index] = msg_uid
+        for uid, msg_info in message_data.iteritems():
+            index = msg_info['index']
+            new_indices.add(index)
+            index_to_uuid[index] = uid
 
         if new_indices:
             headers_by_index = yield worker.get_message_headers(new_indices)
-            for msg_index, msg_raw_headers in headers_by_index.iteritems():
-                msg_uid = index_to_uuid[msg_index]
-                msg_flags = message_data[msg_uid]['flags']
-                folder._messages[msg_uid] = Message(folder, msg_uid,
-                                                    msg_flags, msg_raw_headers)
+            for index, raw_headers in headers_by_index.iteritems():
+                uid = index_to_uuid[index]
+                flags = message_data[uid]['flags']
+                folder._messages[uid] = Message(folder, uid, flags, raw_headers)
 
             signal('folder-updated').send(folder)
 
@@ -129,7 +128,7 @@ class MessageLoadFullJob(AsyncJob):
     def do_stuff(self):
         message = self.message
         log.debug("Loading full message %r in folder %r",
-                 message.msg_uid, message.folder.name)
+                 message.uid, message.folder.name)
         worker = get_worker()
         config = dict( (k, message.folder.account.config[k]) for k in
                        ('host', 'login_name', 'login_pass') )
@@ -137,11 +136,11 @@ class MessageLoadFullJob(AsyncJob):
 
         mbox_status, message_data = yield worker.get_messages_in_folder(message.folder.name)
         uuid_to_index = {}
-        for msg_uid, msg_info in message_data.iteritems():
-            msg_index = msg_info['index']
-            uuid_to_index[msg_uid] = msg_index
+        for uid, msg_info in message_data.iteritems():
+            index = msg_info['index']
+            uuid_to_index[uid] = index
 
-        body = yield worker.get_message_body(uuid_to_index[message.msg_uid])
+        body = yield worker.get_message_body(uuid_to_index[message.uid])
         message.raw_full = body
 
         signal('message-updated').send(message)

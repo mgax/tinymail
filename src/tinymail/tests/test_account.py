@@ -57,8 +57,8 @@ def mock_worker(**folders):
     for name in folders:
         messages = {}
         message_headers = {}
-        for i, (msg_uid, msg_spec) in enumerate(folders[name].iteritems()):
-            messages[msg_uid] = {'index': i, 'flags': ()}
+        for i, (uid, spec) in enumerate(folders[name].iteritems()):
+            messages[uid] = {'index': i, 'flags': ()}
             message_headers[i] = "PLACEHOLDER HEADER"
         messages_in_folder[name] = messages
         message_headers_in_folder[name] = message_headers
@@ -109,7 +109,7 @@ class AccountUpdateTest(unittest.TestCase):
                 account.perform_update()
 
         fol1 = account.get_folder('fol1')
-        self.assertEqual(set(m.msg_uid for m in fol1.list_messages()),
+        self.assertEqual(set(m.uid for m in fol1.list_messages()),
                          set([6, 8]))
         self.assertEqual(signal_log, [fol1])
 
