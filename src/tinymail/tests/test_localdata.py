@@ -60,6 +60,22 @@ class LocalDataTest(unittest.TestCase):
         messages = sorted(db_folder.list_messages())
         self.assertEqual(messages, [msg1, msg2])
 
+    def test_message_nonascii_headers(self):
+        db = make_test_db()
+        with db.transaction():
+            db_account = db.get_account('some account name')
+            db_account.add_folder('archive')
+            db_folder = db_account.get_folder('archive')
+
+        msg1 = (13, set([r'\Seen']), "Subject: hi!\xec\xec\xff")
+
+        with db.transaction():
+            db_folder.add_message(*msg1)
+
+        messages = sorted(db_folder.list_messages())
+        self.assertEqual(messages, [msg1])
+        self.assertTrue(type(messages[0][2]) is str)
+
     def test_add_existing_message(self):
         db = make_test_db()
         msg1 = (13, set([r'\Seen']), "Subject: hi!")

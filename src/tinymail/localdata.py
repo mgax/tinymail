@@ -32,7 +32,8 @@ class DBFolder(object):
         insert_query = ("insert into message"
                         "(account, folder, uid, flags, headers) "
                         "values (?, ?, ?, ?, ?)")
-        row = (self._account.name, self.name, uid, flatten(flags), headers)
+        l1_headers = headers.decode('latin-1')
+        row = (self._account.name, self.name, uid, flatten(flags), l1_headers)
         self._execute(insert_query, row)
 
     def set_message_flags(self, uid, flags):
@@ -50,8 +51,8 @@ class DBFolder(object):
         select_query = ("select uid, flags, headers from message "
                         "where account = ? and folder = ?")
         results = self._execute(select_query, (self._account.name, self.name))
-        for uid, flat_flags, headers in results:
-            yield uid, unflatten(flat_flags), headers
+        for uid, flat_flags, l1_headers in results:
+            yield uid, unflatten(flat_flags), l1_headers.encode('latin-1')
 
 class DBAccount(object):
     def __init__(self, db, name):
