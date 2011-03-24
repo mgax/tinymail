@@ -84,6 +84,8 @@ def mock_worker(**folders):
 
     worker.disconnect.return_value = defer(None)
 
+    worker._messages = messages
+
     with patch('tinymail.account.get_worker', Mock(return_value=worker)):
         yield worker
 
@@ -114,6 +116,16 @@ class AccountUpdateTest(unittest.TestCase):
         self.assertEqual(set(m.uid for m in fol1.list_messages()),
                          set([6, 8]))
         self.assertEqual(signal_log, [fol1])
+
+    def test_only_get_new_headers(self):
+        account = account_for_test()
+        with mock_worker(fol1={6: None, 8: None}):
+            account.perform_update()
+
+        with mock_worker(fol1={6: None, 8: None, 13: None}) as worker:
+            account.perform_update()
+            _index = worker._messages[13]['index']
+            worker.get_message_headers.assert_called_once_with(set([_index]))
 
     def test_empty_folder(self):
         account = account_for_test()

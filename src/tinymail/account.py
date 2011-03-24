@@ -108,8 +108,8 @@ class AccountUpdateJob(AsyncJob):
 
         new_indices = set()
         index_to_uuid = {}
-        for uid, msg_info in message_data.iteritems():
-            index = msg_info['index']
+        for uid in new_message_ids:
+            index = message_data[uid]['index']
             new_indices.add(index)
             index_to_uuid[index] = uid
 
