@@ -4,6 +4,10 @@ from contextlib import contextmanager
 from monocle.callback import defer
 from blinker import signal
 
+def _make_test_db():
+    from tinymail.localdata import open_local_db
+    return open_local_db(':memory:')
+
 def account_for_test(config=None, db=None):
     from tinymail.account import Account
     if config is None:
@@ -153,8 +157,7 @@ class AccountUpdateTest(unittest.TestCase):
 
 class PersistenceTest(unittest.TestCase):
     def test_folders(self):
-        from test_localdata import make_test_db
-        db = make_test_db()
+        db = _make_test_db()
         account = account_for_test(db=db)
 
         with mock_worker(myfolder={}) as worker:
@@ -166,8 +169,7 @@ class PersistenceTest(unittest.TestCase):
         self.assertEqual(folders[0].name, 'myfolder')
 
     def test_messages(self):
-        from test_localdata import make_test_db
-        db = make_test_db()
+        db = _make_test_db()
         account = account_for_test(db=db)
 
         msg4_data = (4, set([r'\Seen']), "Subject: test message")
