@@ -6,7 +6,6 @@ import AppKit
 from PyObjCTools import Debugging
 from blinker import signal
 from tinymail.account import Account
-from tinymail.tests.test_localdata import make_test_db as demo_db
 
 _signals = [signal(name) for name in
             ('ui-folder-selected', 'ui-message-selected')]
@@ -266,9 +265,13 @@ class tinymailAppDelegate(NSObject):
 
     def applicationDidFinishLaunching_(self, notification):
         self._set_up_debug()
-        self.the_account = Account(read_config(), demo_db())
+        self.the_db = open_db()
+        self.the_account = Account(read_config(), self.the_db)
         self._set_up_ui()
         self.the_account.perform_update()
+
+    def applicationWillTerminate_(self, notification):
+        self.the_db.close()
 
     def _set_up_debug(self):
         Debugging.installPythonExceptionHandler()
@@ -282,6 +285,12 @@ class tinymailAppDelegate(NSObject):
     @objc.IBAction
     def doSync_(self, sender):
         self.the_account.sync_folders()
+
+def open_db():
+    import os.path
+    from tinymail.localdata import open_local_db
+    db_path = os.path.join(os.environ['HOME'], '.tinymail/db.sqlite3')
+    return open_local_db(db_path)
 
 def read_config():
     import os

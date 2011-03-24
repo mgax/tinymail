@@ -1,11 +1,8 @@
 import unittest2 as unittest
 
 def make_test_db():
-    import sqlite3
-    from tinymail.localdata import LocalDataDB, create_db_schema
-    connection = sqlite3.connect(':memory:')
-    create_db_schema(connection)
-    return LocalDataDB(connection)
+    from tinymail.localdata import open_local_db
+    return open_local_db(':memory:')
 
 class LocalDataTest(unittest.TestCase):
     def test_folder(self):

@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+import sqlite3
 
 def flatten(flags):
     return ' '.join(sorted(flags))
@@ -110,8 +111,17 @@ class LocalDataDB(object):
             finally:
                 self._transaction = False
 
+    def close(self):
+        self._connection.close()
+
 def create_db_schema(connection):
-    connection.execute("create table folder (account varchar, name varchar)")
-    connection.execute("create table message ("
-                           "account varchar, folder varchar, "
-                           "uid integer, flags varchar, headers text)")
+    connection.execute("create table if not exists "
+                       "folder (account varchar, name varchar)")
+    connection.execute("create table if not exists "
+                       "message (account varchar, folder varchar, "
+                                "uid integer, flags varchar, headers text)")
+
+def open_local_db(db_path):
+    connection = sqlite3.connect(db_path)
+    create_db_schema(connection)
+    return LocalDataDB(connection)
