@@ -182,20 +182,20 @@ class MessageViewDelegate(NSObject):
         if self._message.raw_full is None:
             self._message.load_full()
         else:
-            self.handle_full_message(self._message, self._message.raw_full)
+            self.handle_full_message(self._message)
 
     def handle_message_updated(self, message):
         if self._message is not message:
             return
-        self.handle_full_message(message, message.raw_full)
+        self.handle_full_message(message)
 
-    def handle_full_message(self, message, mime):
+    def handle_full_message(self, message):
         assert message is self._message, ('%r is not %r' %
                                 (message.imap_id, self._message.imap_id))
         if self._displayed:
             return
         self._displayed = True
-        self._update_view_with_string(raw_full)
+        self._update_view_with_string(message.raw_full)
 
     def _update_view_with_string(self, str_data):
         ns_str = NSString.stringWithString_(str_data.decode('latin-1'))
