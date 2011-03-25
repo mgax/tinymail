@@ -29,7 +29,7 @@ class AsyncJobTest(unittest.TestCase):
         job = MyJob()
         job.start()
         self.assertTrue(isinstance(job.failure, ValueError))
-        self.assertEqual(job.failure.message, 'ha!')
+        self.assertEqual(job.failure.args, ('ha!',))
 
 class AsyncWorkerTest(unittest.TestCase):
     def setUp(self):
@@ -83,4 +83,4 @@ class AsyncWorkerTest(unittest.TestCase):
             worker.done()
 
         self.assertTrue(isinstance(d.result, ValueError))
-        self.assertEqual(d.result.message, 'hi')
+        self.assertEqual(d.result.args, ('hi',))
