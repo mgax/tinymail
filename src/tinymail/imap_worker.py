@@ -47,8 +47,12 @@ class ImapWorker(object):
         for entry in self.conn.list():
             m = list_pattern.match(entry)
             assert m is not None
-            folder_path = m.group('name').strip('"')
-            paths.append(folder_path)
+            folder_name = m.group('name').strip('"')
+            try:
+                folder_name.decode('ascii')
+            except UnicodeDecodeError:
+                raise ImapWorkerError("Non-ascii mailbox names not supported")
+            paths.append(folder_name)
 
         return paths
 
@@ -57,12 +61,13 @@ class ImapWorker(object):
         Select folder `folder_name`; return folder status + message flags.
         """
 
-        count = self.conn.select(folder_name, readonly=True)
-        data = self.conn.status(folder_name, '(MESSAGES UIDNEXT UIDVALIDITY)')
+        count = self.conn.select(folder_name.encode('ascii'), readonly=True)
+        data = self.conn.status(folder_name.encode('ascii'),
+                                '(MESSAGES UIDNEXT UIDVALIDITY)')
 
         m = status_pattern.match(data[0])
         assert m is not None
-        assert m.group('name').strip().strip('"') == folder_name
+        assert m.group('name').strip().strip('"') == folder_name.encode('ascii')
         bits = m.group('status').strip().split()
         mbox_status = dict(zip(bits[::2], map(int, bits[1::2])))
 

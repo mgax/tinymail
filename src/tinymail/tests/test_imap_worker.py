@@ -36,6 +36,14 @@ class ImapWorkerTest(unittest.TestCase):
 
         self.assertEqual(sorted(names), ['INBOX', 'fol1', 'fol2', 'fol2.sub'])
 
+    def test_crash_on_non_ascii_folder(self):
+        from tinymail.imap_worker import ImapWorkerError
+        worker, imap_conn = self._worker_with_fake_imap()
+        imap_conn.list.return_value = ('OK', ['(\\HasNoChildren) "." "f\xb3"'])
+
+        msg = "Non-ascii mailbox names not supported"
+        self.assertRaisesRegexp(ImapWorkerError, msg, worker.get_mailbox_names)
+
     def test_get_messages_in_folder(self):
         worker, imap_conn = self._worker_with_fake_imap()
         imap_conn.select.return_value = ('OK', [])
