@@ -10,9 +10,31 @@ status_pattern = re.compile(r'^(?P<name>[^(]+)\((?P<status>[\w\d\s]*)\)$')
 searchuid_pattern = re.compile(r'(?P<index>\d+)\s+\(UID\s*(?P<uid>\d+)'
                                r'\s+FLAGS \((?P<flags>[^\)]*)\)\)$')
 
+class ImapWorkerError(Exception):
+    """ Error encountered while talking to IMAP server. """
+
+class ConnectionErrorWrapper(object):
+    def __init__(self, conn):
+        self.conn = conn
+
+    def __getattr__(self, name):
+        method = getattr(self.conn, name)
+        def wrapper(*args, **kwargs):
+            result = method(*args, **kwargs)
+            if name == 'shutdown':
+                return
+            status, data = result
+            if status == 'OK':
+                return data
+            elif status == 'NO':
+                raise ImapWorkerError("Error: %r" % data)
+            else:
+                raise ImapWorkerError("Unknown status %r" % status)
+        return wrapper
+
 class ImapWorker(object):
     def connect(self, host, login_name, login_pass):
-        self.conn = imaplib.IMAP4_SSL(host)
+        self.conn = ConnectionErrorWrapper(imaplib.IMAP4_SSL(host))
         self.conn.login(login_name, login_pass)
 
     def disconnect(self):
@@ -21,11 +43,8 @@ class ImapWorker(object):
     def get_mailbox_names(self):
         """ Get a list of all mailbox names in the current account. """
 
-        status, entries = self.conn.list()
-        assert status == 'OK'
-
         paths = []
-        for entry in entries:
+        for entry in self.conn.list():
             m = list_pattern.match(entry)
             assert m is not None
             folder_path = m.group('name').strip('"')
@@ -38,12 +57,8 @@ class ImapWorker(object):
         Select folder `folder_name`; return folder status + message flags.
         """
 
-        status, count = self.conn.select(folder_name, readonly=True)
-        assert status == 'OK'
-
-        status, data = self.conn.status(folder_name,
-                                        '(MESSAGES UIDNEXT UIDVALIDITY)')
-        assert status == 'OK'
+        count = self.conn.select(folder_name, readonly=True)
+        data = self.conn.status(folder_name, '(MESSAGES UIDNEXT UIDVALIDITY)')
 
         m = status_pattern.match(data[0])
         assert m is not None
@@ -53,9 +68,7 @@ class ImapWorker(object):
 
         message_data = {}
         if mbox_status['MESSAGES']:
-            status, data = self.conn.fetch('1:*', '(UID FLAGS)')
-            assert status == 'OK'
-
+            data = self.conn.fetch('1:*', '(UID FLAGS)')
             for item in data:
                 m = searchuid_pattern.match(item)
                 assert m is not None
@@ -71,8 +84,7 @@ class ImapWorker(object):
         """ Get headers of specified messagse from current folder. """
 
         msgs = ','.join(map(str, message_indices))
-        status, data = self.conn.fetch(msgs, '(BODY.PEEK[HEADER] FLAGS)')
-        assert status == 'OK'
+        data = self.conn.fetch(msgs, '(BODY.PEEK[HEADER] FLAGS)')
 
         def iter_fragments(data):
             data = iter(data)
@@ -93,8 +105,7 @@ class ImapWorker(object):
         return headers_by_index
 
     def get_message_body(self, message_index):
-        status, data = self.conn.fetch(str(message_index), '(RFC822)')
-        assert status == 'OK'
+        data = self.conn.fetch(str(message_index), '(RFC822)')
         assert len(data) == 2 and data[1] == ')'
         assert isinstance(data[0], tuple) and len(data[0]) == 2
         return data[0][1]
