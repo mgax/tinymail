@@ -40,6 +40,7 @@ def worker_loop(in_queue, worker):
             result = getattr(worker, method)(*args, **kwargs)
             call_on_main_thread(callback, result)
         except Exception, e:
+            monocle.core._add_monocle_tb(e)
             call_on_main_thread(callback, e)
 
 class AsyncWorkerProxy(object):
