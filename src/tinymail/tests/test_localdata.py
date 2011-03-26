@@ -27,6 +27,26 @@ class LocalDataTest(unittest.TestCase):
         with db.transaction():
             self.assertRaises(AssertionError, db_account.add_folder, 'INBOX')
 
+    def test_remove_folder(self):
+        db = _make_test_db()
+        db_account = db.get_account('some account name')
+
+        with db.transaction():
+            db_account.add_folder('INBOX')
+
+        with db.transaction():
+            db_account.del_folder('INBOX')
+
+        self.assertEqual(list(db_account.list_folders()), [])
+
+    def test_remove_nonexistent_folder(self):
+        db = _make_test_db()
+        db_account = db.get_account('some account name')
+
+        with db.transaction():
+            self.assertRaises(KeyError,
+                              db_account.del_folder, 'no-such-folder')
+
     def test_list_folders(self):
         db = _make_test_db()
         db_account = db.get_account('some account name')

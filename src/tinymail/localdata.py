@@ -88,6 +88,13 @@ class DBAccount(object):
                            (self.name, name))
         return DBFolder(self, name)
 
+    def del_folder(self, name):
+        if self._count_folders(name) == 0:
+            raise KeyError("Account %r has no folder named %r" %
+                           (self.name, name))
+        delete_query = "delete from folder where account = ? and name = ?"
+        self._execute(delete_query, (self.name, name))
+
 class LocalDataDB(object):
     def __init__(self, connection):
         self._connection = connection
