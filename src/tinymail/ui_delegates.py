@@ -284,7 +284,7 @@ class tinymailAppDelegate(NSObject):
 
     @objc.IBAction
     def doSync_(self, sender):
-        self.the_account.sync_folders()
+        self.the_account.perform_update()
 
 def open_db():
     import os.path
