@@ -37,6 +37,15 @@ class DBFolder(object):
         row = (self._account.name, self.name, uid, flatten(flags), l1_headers)
         self._execute(insert_query, row)
 
+    def del_message(self, uid):
+        if self._count_messages(uid) == 0:
+            msg = ("Folder %r in account %r has no message with uid %r"
+                   % (self._account.name, self.name, uid))
+            raise KeyError(msg)
+        delete_query = ("delete from message where "
+                        "account = ? and folder = ? and uid = ?")
+        self._execute(delete_query, (self._account.name, self.name, uid))
+
     def set_message_flags(self, uid, flags):
         # TODO check arguments
         if self._count_messages(uid) == 0:

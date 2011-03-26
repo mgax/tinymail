@@ -105,6 +105,33 @@ class LocalDataTest(unittest.TestCase):
         with db.transaction():
             self.assertRaises(AssertionError, db_folder.add_message, *msg1)
 
+    def test_remove_message(self):
+        db = _make_test_db()
+        with db.transaction():
+            db_account = db.get_account('some account name')
+            db_account.add_folder('archive')
+            db_folder = db_account.get_folder('archive')
+        msg1 = (13, set([r'\Seen']), "Subject: hi!")
+        msg2 = (15, set(), "Subject: message 2")
+        with db.transaction():
+            db_folder.add_message(*msg1)
+            db_folder.add_message(*msg2)
+
+        with db.transaction():
+            db_folder.del_message(13)
+
+        self.assertEqual(list(db_folder.list_messages()), [msg2])
+
+    def test_remove_nonexistent_message(self):
+        db = _make_test_db()
+        with db.transaction():
+            db_account = db.get_account('some account name')
+            db_account.add_folder('archive')
+            db_folder = db_account.get_folder('archive')
+
+        with db.transaction():
+            self.assertRaises(KeyError, db_folder.del_message, 13)
+
     def test_set_message_flags(self):
         db = _make_test_db()
         with db.transaction():
