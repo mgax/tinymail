@@ -7,7 +7,7 @@ def flatten(flags):
 def unflatten(flat_flags):
     return set(flat_flags.split())
 
-def count_result(result_set):
+def single_result(result_set):
     return list(result_set)[0][0]
 
 class DBFolder(object):
@@ -21,8 +21,20 @@ class DBFolder(object):
     def _count_messages(self, uid):
         select_query = ("select count(*) from message "
                         "where account = ? and folder = ? and uid = ?")
-        return count_result(self._execute(select_query,
+        return single_result(self._execute(select_query,
                             (self._account.name, self.name, uid)))
+
+    def get_uidvalidity(self):
+        select_query = ("select uidvalidity from folder "
+                        "where account = ? and name = ?")
+        return single_result(self._execute(select_query,
+                            (self._account.name, self.name)))
+
+    def set_uidvalidity(self, uidvalidity):
+        update_query = ("update folder set uidvalidity = ? "
+                        "where account = ? and name = ?")
+        row = (uidvalidity, self._account.name, self.name)
+        self._execute(update_query, row)
 
     def add_message(self, uid, flags, headers):
         # TODO check arguments
@@ -79,7 +91,7 @@ class DBAccount(object):
     def _count_folders(self, name):
         select_query = ("select count(*) from folder "
                         "where account = ? and name = ?")
-        return count_result(self._execute(select_query, (self.name, name)))
+        return single_result(self._execute(select_query, (self.name, name)))
 
     def list_folders(self):
         select_query = "select name from folder where account = ?"
@@ -136,7 +148,8 @@ class LocalDataDB(object):
 
 def create_db_schema(connection):
     connection.execute("create table if not exists "
-                       "folder (account varchar, name varchar)")
+                       "folder (account varchar, name varchar, "
+                               "uidvalidity integer)")
     connection.execute("create table if not exists "
                        "message (account varchar, folder varchar, "
                                 "uid integer, flags varchar, headers text)")

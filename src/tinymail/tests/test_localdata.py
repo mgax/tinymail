@@ -60,6 +60,19 @@ class LocalDataTest(unittest.TestCase):
         self.assertEqual(len(names), 2)
         self.assertEqual(names, set(['INBOX', 'archive']))
 
+    def test_folder_uidvalidity(self):
+        db = _make_test_db()
+        db_account = db.get_account('some account name')
+        with db.transaction():
+            db_account.add_folder('archive')
+        db_folder = db_account.get_folder('archive')
+        self.assertIs(db_folder.get_uidvalidity(), None)
+
+        with db.transaction():
+            db_folder.set_uidvalidity(1234)
+
+        self.assertEqual(db_folder.get_uidvalidity(), 1234)
+
     def test_messages(self):
         db = _make_test_db()
         with db.transaction():
