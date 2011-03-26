@@ -121,6 +121,17 @@ class AccountUpdateTest(unittest.TestCase):
                          set([6, 8]))
         self.assertEqual(signal_log, [fol1])
 
+    def test_message_removed_on_server(self):
+        account = account_for_test()
+        with mock_worker(fol1={6: None, 8: None}):
+            account.perform_update()
+
+        with mock_worker(fol1={6: None}):
+            account.perform_update()
+
+        fol1 = account.get_folder('fol1')
+        self.assertEqual([m.uid for m in fol1.list_messages()], [6])
+
     def test_only_get_new_headers(self):
         account = account_for_test()
         with mock_worker(fol1={6: None, 8: None}):
@@ -215,3 +226,16 @@ class PersistenceTest(unittest.TestCase):
         self.assertEqual(msg22.uid, 22)
         self.assertEqual(msg22.flags, set([r'\Seen', r'\Answered']))
         self.assertEqual(msg22.raw_headers, "Subject: blah")
+
+    def test_message_removed(self):
+        db = _make_test_db()
+        account = account_for_test(db=db)
+        with mock_worker(fol1={6: None, 8: None}):
+            account.perform_update()
+
+        with mock_worker(fol1={6: None}):
+            account.perform_update()
+
+        account2 = account_for_test(db=db)
+        fol1 = account2.get_folder('fol1')
+        self.assertEqual([m.uid for m in fol1.list_messages()], [6])

@@ -115,6 +115,7 @@ class AccountUpdateJob(AsyncJob):
         log.debug("Updating folder %r", folder.name)
         mbox_status, message_data = yield worker.get_messages_in_folder(folder.name)
         new_message_ids = set(message_data) - set(folder._messages)
+        removed_message_ids = set(folder._messages) - set(message_data)
 
         new_indices = set()
         index_to_uuid = {}
@@ -138,10 +139,18 @@ class AccountUpdateJob(AsyncJob):
 
             signal('folder-updated').send(folder)
 
-        # TODO what happens with removed messages on server?
+        if removed_message_ids:
+            db = self.account._db
+            db_account = db.get_account('the-account')
+            db_folder = db_account.get_folder(folder.name)
+            with db.transaction():
+                for uid in removed_message_ids:
+                    del folder._messages[uid]
+                    db_folder.del_message(uid)
 
-        log.info("Finished updating folder %r: %d messages (%d new)",
-                 folder.name, len(message_data), len(new_indices))
+        log.info("Finished updating folder %r: %d messages (%d new, %d del)",
+                 folder.name, len(message_data),
+                 len(new_indices), len(removed_message_ids))
 
 class MessageLoadFullJob(AsyncJob):
     def __init__(self, message):
