@@ -58,9 +58,11 @@ def mock_worker(**folders):
 
     messages_in_folder = {}
     message_headers_in_folder = {}
+    folder_uidvalidity = {}
     for name in folders:
         messages = {}
         message_headers = {}
+        folder_uidvalidity[name] = folders[name].pop('UIDVALIDITY', 123456)
         for i, (uid, spec) in enumerate(folders[name].iteritems()):
             if spec is None:
                 spec = (uid, set(), "PLACEHOLDER HEADER")
@@ -75,7 +77,8 @@ def mock_worker(**folders):
 
     def get_messages_in_folder(name):
         state['name'] = name
-        return defer([{}, messages_in_folder[name]])
+        mbox_status = {'UIDVALIDITY': folder_uidvalidity[name]}
+        return defer([mbox_status, messages_in_folder[name]])
     worker.get_messages_in_folder.side_effect = get_messages_in_folder
 
     def get_message_headers(indices):
@@ -177,6 +180,34 @@ class AccountUpdateTest(unittest.TestCase):
 
         self.assertEqual([f.name for f in account.list_folders()], ['fol1'])
 
+    def test_trust_uidvalidity(self):
+        account = account_for_test()
+        msg13_data = (13, set([r'\Seen']), "Subject: test message")
+        msg13_bis_data = (13, set([r'\Seen']), "Subject: another message")
+        with mock_worker(fol1={13: msg13_data}):
+            account.perform_update()
+
+        with mock_worker(fol1={13: msg13_bis_data}):
+            account.perform_update()
+
+        fol1 = account.get_folder('fol1')
+        self.assertEqual([m.raw_headers for m in fol1.list_messages()],
+                         [msg13_data[2]])
+
+    def test_uidvalidity_changed(self):
+        account = account_for_test()
+        msg13_data = (13, set([r'\Seen']), "Subject: test message")
+        msg13_bis_data = (13, set([r'\Seen']), "Subject: another message")
+        with mock_worker(fol1={13: msg13_data, 'UIDVALIDITY': 1234}):
+            account.perform_update()
+
+        with mock_worker(fol1={13: msg13_bis_data, 'UIDVALIDITY': 1239}):
+            account.perform_update()
+
+        fol1 = account.get_folder('fol1')
+        self.assertEqual([m.raw_headers for m in fol1.list_messages()],
+                         [msg13_bis_data[2]])
+
 class PersistenceTest(unittest.TestCase):
     def test_folders(self):
         db = _make_test_db()
@@ -239,3 +270,30 @@ class PersistenceTest(unittest.TestCase):
         account2 = account_for_test(db=db)
         fol1 = account2.get_folder('fol1')
         self.assertEqual([m.uid for m in fol1.list_messages()], [6])
+
+    def test_uidvalidity(self):
+        db = _make_test_db()
+        account = account_for_test(db=db)
+        msg13_data = (13, set([r'\Seen']), "Subject: test message")
+        with mock_worker(fol1={13: msg13_data, 'UIDVALIDITY': 1234}):
+            account.perform_update()
+
+        account2 = account_for_test(db=db)
+        fol1 = account2.get_folder('fol1')
+        self.assertEqual(fol1._uidvalidity, 1234)
+
+    def test_uidvalidity_changed(self):
+        db = _make_test_db()
+        account = account_for_test(db=db)
+        msg13_data = (13, set([r'\Seen']), "Subject: test message")
+        msg13_bis_data = (13, set([r'\Seen']), "Subject: another message")
+        with mock_worker(fol1={13: msg13_data, 'UIDVALIDITY': 1234}):
+            account.perform_update()
+        with mock_worker(fol1={13: msg13_bis_data, 'UIDVALIDITY': 1239}):
+            account.perform_update()
+
+        account2 = account_for_test(db=db)
+        fol1 = account2.get_folder('fol1')
+        self.assertEqual(fol1._uidvalidity, 1239)
+        self.assertEqual([m.raw_headers for m in fol1.list_messages()],
+                         [msg13_bis_data[2]])

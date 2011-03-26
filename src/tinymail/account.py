@@ -35,6 +35,7 @@ class Account(object):
         for db_folder in db_account_folders:
             name = db_folder.name
             folder = Folder(self, name)
+            folder._uidvalidity = db_folder.get_uidvalidity()
             self._folders[name] = folder
             for uid, flags, raw_headers in db_folder.list_messages():
                 message = Message(folder, uid, flags, raw_headers)
@@ -50,6 +51,7 @@ class Folder(object):
         self.account = account
         self.name = name
         self._messages = {}
+        self._uidvalidity = None
 
     def list_messages(self):
         return self._messages.itervalues()
@@ -114,6 +116,19 @@ class AccountUpdateJob(AsyncJob):
     def update_folder(self, worker, folder):
         log.debug("Updating folder %r", folder.name)
         mbox_status, message_data = yield worker.get_messages_in_folder(folder.name)
+
+        if mbox_status['UIDVALIDITY'] != folder._uidvalidity:
+            if folder._uidvalidity is not None:
+                log.info("Folder %r UIDVALIDITY has changed", folder.name)
+                folder._messages.clear()
+            folder._uidvalidity = mbox_status['UIDVALIDITY']
+            db = self.account._db
+            db_account = db.get_account('the-account')
+            db_folder = db_account.get_folder(folder.name)
+            with db.transaction():
+                db_folder.del_all_messages()
+                db_folder.set_uidvalidity(folder._uidvalidity)
+
         new_message_ids = set(message_data) - set(folder._messages)
         removed_message_ids = set(folder._messages) - set(message_data)
 
