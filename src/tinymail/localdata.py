@@ -46,6 +46,10 @@ class DBFolder(object):
                         "account = ? and folder = ? and uid = ?")
         self._execute(delete_query, (self._account.name, self.name, uid))
 
+    def del_all_messages(self):
+        delete_query = "delete from message where account = ? and folder = ?"
+        self._execute(delete_query, (self._account.name, self.name))
+
     def set_message_flags(self, uid, flags):
         # TODO check arguments
         if self._count_messages(uid) == 0:
