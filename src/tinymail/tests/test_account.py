@@ -155,6 +155,17 @@ class AccountUpdateTest(unittest.TestCase):
         self.assertEqual(message.raw_full, mime_message)
         self.assertEqual(signal_log, [message])
 
+    def test_folder_removed_on_server(self):
+        account = account_for_test()
+
+        with mock_worker(fol1={}, fol2={}):
+            account.perform_update()
+
+        with mock_worker(fol1={}):
+            account.perform_update()
+
+        self.assertEqual([f.name for f in account.list_folders()], ['fol1'])
+
 class PersistenceTest(unittest.TestCase):
     def test_folders(self):
         db = _make_test_db()
@@ -167,6 +178,19 @@ class PersistenceTest(unittest.TestCase):
         folders = list(account2.list_folders())
         self.assertEqual(len(folders), 1)
         self.assertEqual(folders[0].name, 'myfolder')
+
+    def test_folders_removed(self):
+        db = _make_test_db()
+        account = account_for_test(db=db)
+
+        with mock_worker(fol1={}, fol2={}):
+            account.perform_update()
+
+        with mock_worker(fol1={}):
+            account.perform_update()
+
+        account2 = account_for_test(db=db)
+        self.assertEqual([f.name for f in account2.list_folders()], ['fol1'])
 
     def test_messages(self):
         db = _make_test_db()

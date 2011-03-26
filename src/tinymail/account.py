@@ -82,15 +82,25 @@ class AccountUpdateJob(AsyncJob):
         mailbox_names = yield worker.get_mailbox_names()
 
         new_mailbox_names = set(mailbox_names) - set(self.account._folders)
+        removed_mailbox_names = set(self.account._folders) - set(mailbox_names)
+
         if new_mailbox_names:
             db = self.account._db
             db_account = db.get_account('the-account')
             with db.transaction():
                 for name in new_mailbox_names:
+                    log.info("New folder %r", name)
                     db_account.add_folder(name)
                     self.account._folders[name] = Folder(self.account, name)
 
-        # TODO what happens with folders removed on server?
+        if removed_mailbox_names:
+            db = self.account._db
+            db_account = db.get_account('the-account')
+            with db.transaction():
+                for name in removed_mailbox_names:
+                    log.info("Folder %r was removed", name)
+                    db_account.del_folder(name)
+                    del self.account._folders[name]
 
         signal('account-updated').send(self.account)
 
