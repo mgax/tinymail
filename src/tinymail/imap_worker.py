@@ -38,6 +38,8 @@ class ImapWorker(object):
         self.conn.login(login_name, login_pass)
 
     def disconnect(self):
+        import socket
+        self.conn.conn.sock.shutdown(socket.SHUT_RDWR)
         self.conn.shutdown()
 
     def get_mailbox_names(self):
