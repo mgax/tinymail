@@ -21,10 +21,8 @@ class ConnectionErrorWrapper(object):
         method = getattr(self.conn, name)
         def wrapper(*args, **kwargs):
             result = method(*args, **kwargs)
-            if name == 'shutdown':
-                return
             status, data = result
-            if status == 'OK':
+            if (status == 'OK') or (status == 'BYE' and name == 'logout'):
                 return data
             elif status == 'NO':
                 raise ImapWorkerError("Error: %r" % data)
@@ -32,15 +30,29 @@ class ConnectionErrorWrapper(object):
                 raise ImapWorkerError("Unknown status %r" % status)
         return wrapper
 
+# IMAP4_SSL does not call socket.shutdown() before closing socket
+if not getattr(imaplib.IMAP4_SSL.shutdown, '_patched_by_tinymail', False):
+    def shutdown(self):
+        import socket, errno
+        try:
+            self.sock.shutdown(socket.SHUT_RDWR)
+        except socket.error as e:
+            # The server might already have closed the connection
+            if e.errno != errno.ENOTCONN:
+                raise
+        finally:
+            self.sock.close()
+    shutdown._patched_by_tinymail = True
+    imaplib.IMAP4_SSL.shutdown = shutdown
+    del shutdown
+
 class ImapWorker(object):
     def connect(self, host, login_name, login_pass):
         self.conn = ConnectionErrorWrapper(imaplib.IMAP4_SSL(host))
         self.conn.login(login_name, login_pass)
 
     def disconnect(self):
-        import socket
-        self.conn.conn.sock.shutdown(socket.SHUT_RDWR)
-        self.conn.shutdown()
+        self.conn.logout()
 
     def get_mailbox_names(self):
         """ Get a list of all mailbox names in the current account. """
