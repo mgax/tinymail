@@ -28,12 +28,13 @@ threads.
 
 Plans
 -----
-For the moment sending email is not a priority. I'd like to have solid
-IMAP support first. Here's the current TODO list:
-
-* unit tests for everything non-GUI
-* local message cache
-* managing unread status and flags
-* uploading, deleting, copying messages
+Here's a list of what is not done:
+* store passwords in Keychain
+* change message flags (seen, flagged)
+* copy, move, delete messages
+* cache message bodies locally
+* read attachments
+* compose plain-text email
+* send attachments
 
 The name `tinymail` is temporary. Looking for a better name.
