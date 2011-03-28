@@ -17,6 +17,7 @@ class Account(object):
         self._db = db
         self._folders = {}
         self._load_from_db()
+        self._sync_job = None
 
     def get_imap_config(self):
         return dict( (k, self.config[k]) for k in
@@ -42,9 +43,11 @@ class Account(object):
                 folder._messages[uid] = message
 
     def perform_update(self):
-        job = AccountUpdateJob(self)
-        job.start()
-        assert job.failure is None
+        if self._sync_job is not None:
+            return
+        cb = AccountUpdateJob(self).start()
+        if not hasattr(cb, 'result'):
+            self._sync_job = cb
 
 class Folder(object):
     def __init__(self, account, name):
@@ -63,11 +66,14 @@ class Message(object):
         self.flags = flags
         self.raw_headers = raw_headers
         self.raw_full = None
+        self._load_job = None
 
     def load_full(self):
-        job = MessageLoadFullJob(self)
-        job.start()
-        assert job.failure is None
+        if self._load_job is not None:
+            return
+        cb = MessageLoadFullJob(self).start()
+        if not hasattr(cb, 'result'):
+            self._load_job = cb
 
 def get_worker():
     return start_worker(ImapWorker())
@@ -111,6 +117,8 @@ class AccountUpdateJob(AsyncJob):
 
         yield worker.disconnect()
         log.info("Update finished for account %r", self.account.name)
+
+        self.account._sync_job = None
 
     @_o
     def update_folder(self, worker, folder):
@@ -191,3 +199,5 @@ class MessageLoadFullJob(AsyncJob):
         message.raw_full = body
 
         signal('message-updated').send(message)
+
+        self.message._load_job = None
