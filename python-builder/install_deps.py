@@ -86,7 +86,7 @@ def main():
                 install(package, build_path, temp_path)
                 site_pkg = 'Library/Python/2.6/site-packages'
                 install_path = path.join(temp_path, site_pkg, package_name)
-                os.rename(install_path, dest_path)
+                shutil.copytree(install_path, dest_path)
                 print "Installed %r" % dest_path
 
     finally:
