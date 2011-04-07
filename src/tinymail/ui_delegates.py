@@ -226,6 +226,10 @@ class tinymailAppDelegate(NSObject):
     activityTable = objc.IBOutlet()
 
     def applicationDidFinishLaunching_(self, notification):
+        if devel_action == 'nose':
+            self._run_nose_tests(notification.object())
+            return
+
         if devel_action == 'devel':
             self._set_up_debug()
         self._set_up_ui()
@@ -233,6 +237,11 @@ class tinymailAppDelegate(NSObject):
     def applicationWillTerminate_(self, notification):
         if hasattr(self, 'the_db'):
             self.the_db.close()
+
+    def _run_nose_tests(self, app):
+        import runtests
+        cb = runtests.main_o()
+        cb.add(lambda _ign: app.terminate_(self))
 
     def _set_up_debug(self):
         Debugging.installPythonExceptionHandler()
