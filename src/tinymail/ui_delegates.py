@@ -19,7 +19,7 @@ class FolderListingItem(NSObject):
         return item
 
 
-class FolderListingDelegate(NSObject):
+class FolderListing(NSObject):
     @classmethod
     def create(cls, outline_view, account):
         self = cls.new()
@@ -33,7 +33,7 @@ class FolderListingDelegate(NSObject):
 
     def init(self):
         self.items = []
-        return super(FolderListingDelegate, self).init()
+        return super(FolderListing, self).init()
 
     def handle_folders_updated(self, account):
         for item in self.items:
@@ -75,7 +75,7 @@ class FolderListingDelegate(NSObject):
         signal('ui-folder-selected').send(new_value)
 
 
-class MessageListingDelegate(NSObject):
+class MessageListing(NSObject):
     @classmethod
     def create(cls, table_view):
         self = cls.new()
@@ -99,7 +99,7 @@ class MessageListingDelegate(NSObject):
     def init(self):
         self.messages = []
         self._folder = None
-        return super(MessageListingDelegate, self).init()
+        return super(MessageListing, self).init()
 
     def handle_folder_selected(self, folder):
         if self._folder is not None:
@@ -151,7 +151,7 @@ class MessageListingDelegate(NSObject):
         signal('ui-message-selected').send(new_value)
 
 
-class MessageViewDelegate(NSObject):
+class MessageView(NSObject):
     @classmethod
     def create(cls, web_view):
         self = cls.new()
@@ -279,9 +279,9 @@ class tinymailAppDelegate(NSObject):
     def _set_up_ui(self):
         self.the_db = open_db()
         self.the_account = Account(read_config(), self.the_db)
-        FolderListingDelegate.create(self.foldersPane, self.the_account)
-        MessageListingDelegate.create(self.messagesPane)
-        MessageViewDelegate.create(self.messageView)
+        FolderListing.create(self.foldersPane, self.the_account)
+        MessageListing.create(self.messagesPane)
+        MessageView.create(self.messageView)
         self.the_account.perform_update()
 
     @objc.IBAction
