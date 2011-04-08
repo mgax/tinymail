@@ -1,12 +1,9 @@
 import unittest2 as unittest
-
-def _make_test_db():
-    from tinymail.localdata import open_local_db
-    return open_local_db(':memory:')
+from helpers import mock_db
 
 class LocalDataTest(unittest.TestCase):
     def test_folder(self):
-        db = _make_test_db()
+        db = mock_db()
         db_account = db.get_account('some account name')
 
         with db.transaction():
@@ -18,7 +15,7 @@ class LocalDataTest(unittest.TestCase):
         self.assertRaises(KeyError, db_account.get_folder, 'no-such-folder')
 
     def test_add_existing_folder(self):
-        db = _make_test_db()
+        db = mock_db()
         db_account = db.get_account('some account name')
 
         with db.transaction():
@@ -28,7 +25,7 @@ class LocalDataTest(unittest.TestCase):
             self.assertRaises(AssertionError, db_account.add_folder, 'INBOX')
 
     def test_remove_folder(self):
-        db = _make_test_db()
+        db = mock_db()
         db_account = db.get_account('some account name')
 
         with db.transaction():
@@ -40,7 +37,7 @@ class LocalDataTest(unittest.TestCase):
         self.assertEqual(list(db_account.list_folders()), [])
 
     def test_remove_nonexistent_folder(self):
-        db = _make_test_db()
+        db = mock_db()
         db_account = db.get_account('some account name')
 
         with db.transaction():
@@ -48,7 +45,7 @@ class LocalDataTest(unittest.TestCase):
                               db_account.del_folder, 'no-such-folder')
 
     def test_list_folders(self):
-        db = _make_test_db()
+        db = mock_db()
         db_account = db.get_account('some account name')
         self.assertEqual(list(db_account.list_folders()), [])
 
@@ -61,7 +58,7 @@ class LocalDataTest(unittest.TestCase):
         self.assertEqual(names, set(['INBOX', 'archive']))
 
     def test_folder_uidvalidity(self):
-        db = _make_test_db()
+        db = mock_db()
         db_account = db.get_account('some account name')
         with db.transaction():
             db_account.add_folder('archive')
@@ -74,7 +71,7 @@ class LocalDataTest(unittest.TestCase):
         self.assertEqual(db_folder.get_uidvalidity(), 1234)
 
     def test_messages(self):
-        db = _make_test_db()
+        db = mock_db()
         with db.transaction():
             db_account = db.get_account('some account name')
             db_account.add_folder('archive')
@@ -91,7 +88,7 @@ class LocalDataTest(unittest.TestCase):
         self.assertEqual(messages, [msg1, msg2])
 
     def test_message_nonascii_headers(self):
-        db = _make_test_db()
+        db = mock_db()
         with db.transaction():
             db_account = db.get_account('some account name')
             db_account.add_folder('archive')
@@ -107,7 +104,7 @@ class LocalDataTest(unittest.TestCase):
         self.assertTrue(type(messages[0][2]) is str)
 
     def test_add_existing_message(self):
-        db = _make_test_db()
+        db = mock_db()
         msg1 = (13, set([r'\Seen']), "Subject: hi!")
         with db.transaction():
             db_account = db.get_account('some account name')
@@ -119,7 +116,7 @@ class LocalDataTest(unittest.TestCase):
             self.assertRaises(AssertionError, db_folder.add_message, *msg1)
 
     def test_remove_message(self):
-        db = _make_test_db()
+        db = mock_db()
         with db.transaction():
             db_account = db.get_account('some account name')
             db_account.add_folder('archive')
@@ -136,7 +133,7 @@ class LocalDataTest(unittest.TestCase):
         self.assertEqual(list(db_folder.list_messages()), [msg2])
 
     def test_remove_nonexistent_message(self):
-        db = _make_test_db()
+        db = mock_db()
         with db.transaction():
             db_account = db.get_account('some account name')
             db_account.add_folder('archive')
@@ -146,7 +143,7 @@ class LocalDataTest(unittest.TestCase):
             self.assertRaises(KeyError, db_folder.del_message, 13)
 
     def test_remove_all_messagse(self):
-        db = _make_test_db()
+        db = mock_db()
         with db.transaction():
             db_account = db.get_account('some account name')
             db_account.add_folder('archive')
@@ -163,7 +160,7 @@ class LocalDataTest(unittest.TestCase):
         self.assertEqual(list(db_folder.list_messages()), [])
 
     def test_set_message_flags(self):
-        db = _make_test_db()
+        db = mock_db()
         with db.transaction():
             db_account = db.get_account('some account name')
             db_account.add_folder('archive')
@@ -185,7 +182,7 @@ class LocalDataTest(unittest.TestCase):
         self.assertEqual(messages, [msg1, msg2])
 
     def test_set_message_flags_no_message(self):
-        db = _make_test_db()
+        db = mock_db()
         with db.transaction():
             db_account = db.get_account('some account name')
             db_account.add_folder('archive')
@@ -196,7 +193,7 @@ class LocalDataTest(unittest.TestCase):
                               13, set([r'\Seen', r'\Answered']))
 
     def test_require_transactions(self):
-        db = _make_test_db()
+        db = mock_db()
         with db.transaction():
             db_account = db.get_account('some account name')
             db_account.add_folder('archive')

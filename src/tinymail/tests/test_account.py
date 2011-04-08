@@ -3,10 +3,7 @@ import unittest2 as unittest
 from contextlib import contextmanager
 from monocle.callback import defer
 from blinker import signal
-
-def _make_test_db():
-    from tinymail.localdata import open_local_db
-    return open_local_db(':memory:')
+from helpers import mock_db
 
 def _account_for_test(config=None, db=None):
     from tinymail.account import Account
@@ -210,7 +207,7 @@ class AccountUpdateTest(unittest.TestCase):
 
 class PersistenceTest(unittest.TestCase):
     def test_folders(self):
-        db = _make_test_db()
+        db = mock_db()
         account = _account_for_test(db=db)
 
         with mock_worker(myfolder={}) as worker:
@@ -222,7 +219,7 @@ class PersistenceTest(unittest.TestCase):
         self.assertEqual(folders[0].name, 'myfolder')
 
     def test_folders_removed(self):
-        db = _make_test_db()
+        db = mock_db()
         account = _account_for_test(db=db)
 
         with mock_worker(fol1={}, fol2={}):
@@ -235,7 +232,7 @@ class PersistenceTest(unittest.TestCase):
         self.assertEqual([f.name for f in account2.list_folders()], ['fol1'])
 
     def test_messages(self):
-        db = _make_test_db()
+        db = mock_db()
         account = _account_for_test(db=db)
 
         msg4_data = (4, set([r'\Seen']), "Subject: test message")
@@ -259,7 +256,7 @@ class PersistenceTest(unittest.TestCase):
         self.assertEqual(msg22.raw_headers, "Subject: blah")
 
     def test_message_removed(self):
-        db = _make_test_db()
+        db = mock_db()
         account = _account_for_test(db=db)
         with mock_worker(fol1={6: None, 8: None}):
             account.perform_update()
@@ -272,7 +269,7 @@ class PersistenceTest(unittest.TestCase):
         self.assertEqual([m.uid for m in fol1.list_messages()], [6])
 
     def test_uidvalidity(self):
-        db = _make_test_db()
+        db = mock_db()
         account = _account_for_test(db=db)
         msg13_data = (13, set([r'\Seen']), "Subject: test message")
         with mock_worker(fol1={13: msg13_data, 'UIDVALIDITY': 1234}):
@@ -283,7 +280,7 @@ class PersistenceTest(unittest.TestCase):
         self.assertEqual(fol1._uidvalidity, 1234)
 
     def test_uidvalidity_changed(self):
-        db = _make_test_db()
+        db = mock_db()
         account = _account_for_test(db=db)
         msg13_data = (13, set([r'\Seen']), "Subject: test message")
         msg13_bis_data = (13, set([r'\Seen']), "Subject: another message")
