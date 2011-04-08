@@ -3,7 +3,7 @@ import unittest2 as unittest
 from contextlib import contextmanager
 from monocle.callback import defer
 from blinker import signal
-from helpers import mock_db
+from helpers import mock_db, listen_for
 
 def _account_for_test(config=None, db=None):
     from tinymail.account import Account
@@ -100,26 +100,24 @@ class AccountUpdateTest(unittest.TestCase):
         folders = {'fol1': {}, 'fol2': {}}
 
         with mock_worker(**folders):
-            signal_log = []
-            with signal('account-updated').connected_to(signal_log.append):
+            with listen_for(signal('account-updated')) as caught_signals:
                 account.perform_update()
 
         self.assertEqual(set(f.name for f in account.list_folders()),
                          set(folders))
-        self.assertEqual(signal_log, [account])
+        self.assertEqual(caught_signals, [(account, {})])
 
     def test_list_messages(self):
         account = _account_for_test()
 
         with mock_worker(fol1={6: None, 8: None}):
-            signal_log = []
-            with signal('folder-updated').connected_to(signal_log.append):
+            with listen_for(signal('folder-updated')) as caught_signals:
                 account.perform_update()
 
         fol1 = account.get_folder('fol1')
         self.assertEqual(set(m.uid for m in fol1.list_messages()),
                          set([6, 8]))
-        self.assertEqual(signal_log, [fol1])
+        self.assertEqual(caught_signals, [(fol1, {})])
 
     def test_message_removed_on_server(self):
         account = _account_for_test()
@@ -146,7 +144,6 @@ class AccountUpdateTest(unittest.TestCase):
         account = _account_for_test()
 
         with mock_worker(fol1={}) as worker:
-            signal_log = []
             account.perform_update()
 
         self.assertFalse(worker.get_message_headers.called)
@@ -159,12 +156,11 @@ class AccountUpdateTest(unittest.TestCase):
             account.perform_update()
             message = account.get_folder('fol1')._messages[6]
             worker.get_message_body.return_value = defer(mime_message)
-            signal_log = []
-            with signal('message-updated').connected_to(signal_log.append):
+            with listen_for(signal('message-updated')) as caught_signals:
                 message.load_full()
 
         self.assertEqual(message.raw_full, mime_message)
-        self.assertEqual(signal_log, [message])
+        self.assertEqual(caught_signals, [(message, {})])
 
     def test_folder_removed_on_server(self):
         account = _account_for_test()
