@@ -264,23 +264,25 @@ class tinymailAppDelegate(NSObject):
     activityTable = objc.IBOutlet()
 
     def applicationDidFinishLaunching_(self, notification):
-        self._set_up_debug()
-        self.the_db = open_db()
-        self.the_account = Account(read_config(), self.the_db)
+        if devel_action == 'devel':
+            self._set_up_debug()
         self._set_up_ui()
-        self.the_account.perform_update()
 
     def applicationWillTerminate_(self, notification):
-        self.the_db.close()
+        if hasattr(self, 'the_db'):
+            self.the_db.close()
 
     def _set_up_debug(self):
         Debugging.installPythonExceptionHandler()
         logging.basicConfig(level=logging.INFO)
 
     def _set_up_ui(self):
+        self.the_db = open_db()
+        self.the_account = Account(read_config(), self.the_db)
         FolderListingDelegate.create(self.foldersPane, self.the_account)
         MessageListingDelegate.create(self.messagesPane)
         MessageViewDelegate.create(self.messageView)
+        self.the_account.perform_update()
 
     @objc.IBAction
     def doSync_(self, sender):
