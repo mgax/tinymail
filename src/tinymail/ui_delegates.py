@@ -72,7 +72,7 @@ class FolderListing(NSObject):
         else:
             new_value = outline_view.itemAtRow_(row).folder
 
-        signal('ui-folder-selected').send(new_value)
+        signal('ui-folder-selected').send(self, folder=new_value)
 
 
 class MessageListing(NSObject):
@@ -83,7 +83,7 @@ class MessageListing(NSObject):
         table_view.setDelegate_(self)
         table_view.setDataSource_(self)
         self._set_up_columns()
-        self.cb1 = lambda f: self.handle_folder_selected(f)
+        self.cb1 = lambda sender, folder: self.handle_folder_selected(folder)
         signal('ui-folder-selected').connect(self.cb1)
         self.cb = lambda f: self.handle_messages_updated(f)
         signal('folder-updated').connect(self.cb)
@@ -148,7 +148,7 @@ class MessageListing(NSObject):
         row = table_view.selectedRow()
         new_value = (None if row == -1 else self.messages[row])
 
-        signal('ui-message-selected').send(new_value)
+        signal('ui-message-selected').send(self, message=new_value)
 
 
 class MessageView(NSObject):
@@ -157,7 +157,7 @@ class MessageView(NSObject):
         self = cls.new()
         self.web_view = web_view
         self._message = None
-        self.cb1 = lambda m: self.handle_message_selected(m)
+        self.cb1 = lambda sender, message: self.handle_message_selected(message)
         signal('ui-message-selected').connect(self.cb1)
         self.cb = lambda m: self.handle_message_updated(m)
         signal('message-updated').connect(self.cb)
