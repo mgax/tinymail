@@ -1,5 +1,5 @@
 import logging
-from monocle import _o
+from monocle import _o, Return
 from blinker import signal
 from async import AsyncJob, start_worker
 from imap_worker import ImapWorker
@@ -68,12 +68,18 @@ class Message(object):
         self.raw_full = None
         self._load_job = None
 
+    @_o
     def load_full(self):
         if self._load_job is not None:
-            return
-        cb = MessageLoadFullJob(self).start()
-        if not hasattr(cb, 'result'):
-            self._load_job = cb
+            yield self._load_job
+
+        elif self.raw_full is None:
+            cb = MessageLoadFullJob(self).start()
+            if not hasattr(cb, 'result'):
+                self._load_job = cb
+            yield cb
+
+        yield Return(self)
 
 def get_worker():
     return start_worker(ImapWorker())

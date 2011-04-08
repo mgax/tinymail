@@ -77,16 +77,16 @@ class FolderListing(NSObject):
 
 class MessageListing(NSObject):
     @classmethod
-    def create(cls, table_view):
+    def create(cls, table_view, folder):
         self = cls.new()
         self.table_view = table_view
         table_view.setDelegate_(self)
         table_view.setDataSource_(self)
         self._set_up_columns()
-        self.cb1 = lambda sender, folder: self.handle_folder_selected(folder)
-        signal('ui-folder-selected').connect(self.cb1)
-        self.cb = lambda f: self.handle_messages_updated(f)
-        signal('folder-updated').connect(self.cb)
+        if folder is not None:
+            self.cb = lambda f: self.messages_updated(f._messages)
+            signal('folder-updated').connect(self.cb, folder)
+            self.messages_updated(folder._messages)
         return self
 
     def _set_up_columns(self):
@@ -100,22 +100,6 @@ class MessageListing(NSObject):
         self.messages = []
         self._folder = None
         return super(MessageListing, self).init()
-
-    def handle_folder_selected(self, folder):
-        if self._folder is not None:
-            pass
-
-        self._folder = folder
-        if self._folder is None:
-            self.messages_updated({})
-            return
-
-        self.messages_updated(self._folder._messages)
-
-    def handle_messages_updated(self, folder):
-        if folder is not self._folder:
-            return
-        self.messages_updated(folder._messages)
 
     def messages_updated(self, messages):
         self.messages = [msg for (uid, msg) in sorted(messages.iteritems())]
@@ -153,14 +137,15 @@ class MessageListing(NSObject):
 
 class MessageView(NSObject):
     @classmethod
-    def create(cls, web_view):
+    def create(cls, web_view, message):
         self = cls.new()
         self.web_view = web_view
-        self._message = None
-        self.cb1 = lambda sender, message: self.handle_message_selected(message)
-        signal('ui-message-selected').connect(self.cb1)
-        self.cb = lambda m: self.handle_message_updated(m)
-        signal('message-updated').connect(self.cb)
+        if message is None:
+            self._update_view_with_string("")
+        else:
+            self._update_view_with_string("Loading...")
+            full_message_cb = message.load_full()
+            full_message_cb.add(self.show_full_message)
         return self
 
     def _configure_web_view(self):
@@ -170,30 +155,7 @@ class MessageView(NSObject):
         web_view_prefs.setPluginsEnabled_(False)
         web_view_prefs.setUsesPageCache_(False)
 
-    def handle_message_selected(self, message):
-        self._message = message
-        if self._message is None:
-            self._update_view_with_string("")
-            return
-
-        self._update_view_with_string("Loading...")
-        self._displayed = False
-        if self._message.raw_full is None:
-            self._message.load_full()
-        else:
-            self.handle_full_message(self._message)
-
-    def handle_message_updated(self, message):
-        if self._message is not message:
-            return
-        self.handle_full_message(message)
-
-    def handle_full_message(self, message):
-        assert message is self._message, ('%r is not %r' %
-                                (message.imap_id, self._message.imap_id))
-        if self._displayed:
-            return
-        self._displayed = True
+    def show_full_message(self, message):
         self._update_view_with_string(message.raw_full)
 
     def _update_view_with_string(self, str_data):
@@ -280,9 +242,15 @@ class tinymailAppDelegate(NSObject):
         self.the_db = open_db()
         self.the_account = Account(read_config(), self.the_db)
         FolderListing.create(self.foldersPane, self.the_account)
-        MessageListing.create(self.messagesPane)
-        MessageView.create(self.messageView)
         self.the_account.perform_update()
+
+        def folder_selected(sender, folder):
+            MessageListing.create(self.messagesPane, folder)
+        signal('ui-folder-selected').connect(folder_selected, weak=False)
+
+        def message_selected(sender, message):
+            MessageView.create(self.messageView, message)
+        signal('ui-message-selected').connect(message_selected, weak=False)
 
     @objc.IBAction
     def doSync_(self, sender):
