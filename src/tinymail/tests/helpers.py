@@ -33,7 +33,7 @@ def mock_worker(**folders):
         for i, (uid, spec) in enumerate(folders[name].iteritems()):
             if spec is None:
                 spec = (uid, set(), "PLACEHOLDER HEADER")
-            messages[uid] = {'index': i, 'flags': spec[1]}
+            messages[uid] = {'index': i, 'flags': set(spec[1])}
             message_headers[i] = spec[2]
         messages_in_folder[name] = messages
         message_headers_in_folder[name] = message_headers
