@@ -1,4 +1,7 @@
+import logging
 from Foundation import objc, NSObject, NSAutoreleasePool
+
+log = logging.getLogger(__name__)
 
 class MainThreadHelper(NSObject):
     def onMainThread(self):
