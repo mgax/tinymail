@@ -1,9 +1,9 @@
-from mock import Mock, MagicMock, patch
+from mock import Mock, MagicMock
 import unittest2 as unittest
 from contextlib import contextmanager
 from monocle.callback import defer
 from blinker import signal
-from helpers import mock_db, listen_for
+from helpers import mock_db, listen_for, mock_worker
 
 def _account_for_test(config=None, db=None):
     from tinymail.account import Account
@@ -46,52 +46,6 @@ class FolderTest(unittest.TestCase):
         messages = list(folder.list_messages())
 
         self.assertEqual(messages, [msg1, msg2])
-
-@contextmanager
-def mock_worker(**folders):
-    from tinymail.imap_worker import ImapWorker
-    worker = Mock(spec=ImapWorker)
-    state = {}
-
-    messages_in_folder = {}
-    message_headers_in_folder = {}
-    folder_uidvalidity = {}
-    for name in folders:
-        messages = {}
-        message_headers = {}
-        folder_uidvalidity[name] = folders[name].pop('UIDVALIDITY', 123456)
-        for i, (uid, spec) in enumerate(folders[name].iteritems()):
-            if spec is None:
-                spec = (uid, set(), "PLACEHOLDER HEADER")
-            messages[uid] = {'index': i, 'flags': spec[1]}
-            message_headers[i] = spec[2]
-        messages_in_folder[name] = messages
-        message_headers_in_folder[name] = message_headers
-
-    worker.connect.return_value = defer(None)
-
-    worker.get_mailbox_names.return_value = defer(list(folders))
-
-    def get_messages_in_folder(name):
-        state['name'] = name
-        mbox_status = {'UIDVALIDITY': folder_uidvalidity[name]}
-        return defer([mbox_status, messages_in_folder[name]])
-    worker.get_messages_in_folder.side_effect = get_messages_in_folder
-
-    def get_message_headers(indices):
-        name = state['name']
-        message_headers = {}
-        for i in indices:
-            message_headers[i] = message_headers_in_folder[name][i]
-        return defer(message_headers)
-    worker.get_message_headers.side_effect = get_message_headers
-
-    worker.disconnect.return_value = defer(None)
-
-    worker._messages = messages
-
-    with patch('tinymail.account.get_worker', Mock(return_value=worker)):
-        yield worker
 
 class AccountUpdateTest(unittest.TestCase):
 
