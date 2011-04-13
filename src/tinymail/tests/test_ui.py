@@ -1,7 +1,7 @@
 import unittest2 as unittest
 from monocle import _o
 from blinker import signal
-from helpers import mock_db, listen_for, mock_worker
+from helpers import mock_db, listen_for, mock_worker, AsyncTestCase
 
 def get_app_delegate():
     import AppKit
@@ -44,7 +44,7 @@ def account_with_folders(**folders):
         account.perform_update()
     return account
 
-class FolderListingTest(unittest.TestCase):
+class FolderListingTest(AsyncTestCase):
     def tearDown(self):
         cleanup_ui(get_app_delegate())
 
@@ -79,7 +79,7 @@ class FolderListingTest(unittest.TestCase):
             (folder_listing, {'folder': account.get_folder('fol2')}),
         ])
 
-class MessageListingTest(unittest.TestCase):
+class MessageListingTest(AsyncTestCase):
     def tearDown(self):
         cleanup_ui(get_app_delegate())
 

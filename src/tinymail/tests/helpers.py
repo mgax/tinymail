@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+import unittest2
 
 def mock_db():
     from tinymail.localdata import open_local_db
@@ -62,3 +63,8 @@ def mock_worker(**folders):
 
     with patch('tinymail.account.get_worker', Mock(return_value=worker)):
         yield worker
+
+class AsyncTestCase(unittest2.TestCase):
+    def run(self, result=None):
+        from nose import SkipTest
+        raise SkipTest("This test will only run in async mode")
