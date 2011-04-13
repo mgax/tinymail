@@ -28,7 +28,7 @@ class FolderListing(NSObject):
         outline_view.setDelegate_(self)
         self.cb = lambda a: self.handle_folders_updated(a)
         signal('account-updated').connect(self.cb)
-        sel = self.handle_folders_updated
+        self.handle_folders_updated(account)
         return self
 
     def init(self):
@@ -39,7 +39,7 @@ class FolderListing(NSObject):
         for item in self.items:
             item.release()
         self.items = [FolderListingItem.itemWithFolder_(f).retain()
-                      for f in account._folders.values()]
+                      for n, f in sorted(account._folders.items())]
         self.outline_view.reloadData()
 
     def outlineView_numberOfChildrenOfItem_(self, outline_view, item):

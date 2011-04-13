@@ -52,24 +52,37 @@ class FolderListingTest(AsyncTestCase):
         from tinymail.ui_delegates import FolderListing
         account = _account_for_test()
         folders_pane = get_app_delegate().foldersPane
-        folder_listing = FolderListing.create(folders_pane, account)
-
         with mock_worker(fol1={6: None, 8: None}, fol2={}):
             account.perform_update()
+
+        folder_listing = FolderListing.create(folders_pane, account)
 
         cell1 = folders_pane.preparedCellAtColumn_row_(0, 0)
         self.assertEqual(cell1.objectValue(), 'fol1')
         cell2 = folders_pane.preparedCellAtColumn_row_(0, 1)
         self.assertEqual(cell2.objectValue(), 'fol2')
 
-    def test_select_folder(self):
+    def test_folders_updated(self):
         from tinymail.ui_delegates import FolderListing
         account = _account_for_test()
         folders_pane = get_app_delegate().foldersPane
         folder_listing = FolderListing.create(folders_pane, account)
 
+        with mock_worker(fol2={}, fol3={}):
+            account.perform_update()
+
+        cell1 = folders_pane.preparedCellAtColumn_row_(0, 0)
+        self.assertEqual(cell1.objectValue(), 'fol2')
+        cell2 = folders_pane.preparedCellAtColumn_row_(0, 1)
+        self.assertEqual(cell2.objectValue(), 'fol3')
+
+    def test_select_folder(self):
+        from tinymail.ui_delegates import FolderListing
+        account = _account_for_test()
+        folders_pane = get_app_delegate().foldersPane
         with mock_worker(fol1={6: None, 8: None}, fol2={}):
             account.perform_update()
+        folder_listing = FolderListing.create(folders_pane, account)
 
         with listen_for(signal('ui-folder-selected')) as caught_signals:
             rows = objc_index_set([1])
