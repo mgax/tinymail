@@ -116,6 +116,24 @@ class MessageListingTest(AsyncTestCase):
         self.assertEqual(sender2.objectValue(), "her")
         self.assertEqual(subject2.objectValue(), "another test message")
 
+    def test_update_messages(self):
+        from tinymail.ui_delegates import MessageListing
+        msg6 = (6, [r'\Seen'], "From: me\nSubject: test message")
+        msg8 = (8, [r'\Seen'], "From: her\nSubject: another test message")
+        account = account_with_folders(fol1={})
+        folder = account.get_folder('fol1')
+        messages_pane = get_app_delegate().messagesPane
+        message_listing = MessageListing.create(messages_pane, folder)
+
+        with mock_worker(fol1={6: msg6, 8: msg8}):
+            account.perform_update()
+
+        subject1 = messages_pane.preparedCellAtColumn_row_(1, 0)
+        self.assertEqual(subject1.objectValue(), "test message")
+
+        subject2 = messages_pane.preparedCellAtColumn_row_(1, 1)
+        self.assertEqual(subject2.objectValue(), "another test message")
+
     def test_select_message(self):
         from tinymail.ui_delegates import MessageListing
         msg6 = (6, [r'\Seen'], "From: me\nSubject: test message")
