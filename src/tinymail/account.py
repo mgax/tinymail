@@ -59,6 +59,9 @@ class Folder(object):
     def list_messages(self):
         return self._messages.itervalues()
 
+    def get_message(self, uid):
+        return self._messages[uid]
+
 class Message(object):
     def __init__(self, folder, uid, flags, raw_headers):
         self.folder = folder

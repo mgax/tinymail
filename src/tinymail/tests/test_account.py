@@ -47,6 +47,15 @@ class FolderTest(unittest.TestCase):
 
         self.assertEqual(messages, [msg1, msg2])
 
+    def test_get_message(self):
+        from tinymail.account import Folder
+        folder = Folder(Mock(), 'fol1')
+        msg1, msg2 = Mock(), Mock()
+        folder._messages = {1: msg1, 2: msg2}
+
+        self.assertEqual(folder.get_message(1), msg1)
+        self.assertEqual(folder.get_message(2), msg2)
+
 class AccountUpdateTest(unittest.TestCase):
 
     def test_list_folders(self):
