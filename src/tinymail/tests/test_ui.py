@@ -102,3 +102,21 @@ class MessageListingTest(unittest.TestCase):
         subject2 = messages_pane.preparedCellAtColumn_row_(1, 1)
         self.assertEqual(sender2.objectValue(), "her")
         self.assertEqual(subject2.objectValue(), "another test message")
+
+    def test_select_message(self):
+        from tinymail.ui_delegates import MessageListing
+        msg6 = (6, [r'\Seen'], "From: me\nSubject: test message")
+        msg8 = (8, [r'\Seen'], "From: her\nSubject: another test message")
+        account = account_with_folders(fol1={6: msg6, 8: msg8})
+        fol1 = account.get_folder('fol1')
+        messages_pane = get_app_delegate().messagesPane
+
+        message_listing = MessageListing.create(messages_pane, fol1)
+
+        with listen_for(signal('ui-message-selected')) as caught_signals:
+            rows = objc_index_set([1])
+            messages_pane.selectRowIndexes_byExtendingSelection_(rows, False)
+
+        self.assertEqual(caught_signals, [
+            (message_listing, {'message': fol1.get_message(8)}),
+        ])
