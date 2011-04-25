@@ -19,28 +19,44 @@ class FolderListingItem(NSObject):
         return item
 
 
-class FolderListing(NSObject):
-    @classmethod
-    def create(cls, outline_view, account):
-        self = cls.alloc().init()
-        self.outline_view = outline_view
-        outline_view.setDataSource_(self)
-        outline_view.setDelegate_(self)
-        self.cb = lambda a: self.handle_folders_updated(a)
-        signal('account-updated').connect(self.cb)
-        self.handle_folders_updated(account)
+class AccountController(NSObject):
+    def init(self):
+        self = super(AccountController, self).init()
+        self.items = []
+        self.outline_view = None
         return self
 
-    def init(self):
-        self.items = []
-        return super(FolderListing, self).init()
+    @classmethod
+    def newBlank(cls):
+        return cls.alloc().init()
 
-    def handle_folders_updated(self, account):
+    @classmethod
+    def newWithAccount_(cls, account):
+        self = cls.alloc().init()
+        self.cb = lambda a: self.folders_updated(a)
+        signal('account-updated').connect(self.cb, account)
+        self.folders_updated(account)
+        return self
+
+    def setView_(self, outline_view):
+        self.outline_view = outline_view
+        if outline_view is None:
+            return
+
+        outline_view.setDataSource_(self)
+        outline_view.setDelegate_(self)
+
+        outline_view.reloadData()
+
+    def folders_updated(self, account):
         for item in self.items:
             item.release()
-        self.items = [FolderListingItem.itemWithFolder_(f).retain()
-                      for n, f in sorted(account._folders.items())]
-        self.outline_view.reloadData()
+
+        self.items[:] = [FolderListingItem.itemWithFolder_(f).retain()
+                         for n, f in sorted(account._folders.items())]
+
+        if self.outline_view is not None:
+            self.outline_view.reloadData()
 
     def outlineView_numberOfChildrenOfItem_(self, outline_view, item):
         assert item is None
@@ -238,9 +254,15 @@ class tinymailAppDelegate(NSObject):
     def init(self):
         self = super(tinymailAppDelegate, self).init()
         self.controllers = { # because we have ownership of the controllers
+            'account': AccountController.newBlank(),
             'folder': FolderController.newBlank(),
         }
         return self
+
+    def setAccountController_(self, ac):
+        self.controllers['account'].setView_(None)
+        self.controllers['account'] = ac
+        self.controllers['account'].setView_(self.foldersPane)
 
     def setFolderController_(self, fc):
         self.controllers['folder'].setView_(None)
@@ -272,7 +294,7 @@ class tinymailAppDelegate(NSObject):
     def _set_up_ui(self):
         self.the_db = open_db()
         self.the_account = Account(read_config(), self.the_db)
-        FolderListing.create(self.foldersPane, self.the_account)
+        self.setAccountController_(AccountController.newWithAccount_(self.the_account))
         self.the_account.perform_update()
 
         def folder_selected(sender, folder):

@@ -26,13 +26,14 @@ def sleep(delay):
     return cb
 
 def cleanup_ui(app_delegate):
-    from tinymail.ui_delegates import FolderListing, FolderController
+    from tinymail.ui_delegates import AccountController, FolderController
     from tinymail.account import Folder
 
     fc = FolderController.controllerWithFolder_(Folder(None, 'f'))
     app_delegate.setFolderController_(fc)
 
-    FolderListing.create(app_delegate.foldersPane, _account_for_test())
+    ac = AccountController.newWithAccount_(_account_for_test())
+    app_delegate.setAccountController_(ac)
 
 def objc_index_set(values):
     from Foundation import NSMutableIndexSet
@@ -47,18 +48,19 @@ def account_with_folders(**folders):
         account.perform_update()
     return account
 
-class FolderListingTest(AsyncTestCase):
+class AccountControllerTest(AsyncTestCase):
     def tearDown(self):
         cleanup_ui(get_app_delegate())
 
     def test_show_folders(self):
-        from tinymail.ui_delegates import FolderListing
+        from tinymail.ui_delegates import AccountController
         account = _account_for_test()
         folders_pane = get_app_delegate().foldersPane
         with mock_worker(fol1={6: None, 8: None}, fol2={}):
             account.perform_update()
 
-        folder_listing = FolderListing.create(folders_pane, account)
+        account_controller = AccountController.newWithAccount_(account)
+        get_app_delegate().setAccountController_(account_controller)
 
         cell1 = folders_pane.preparedCellAtColumn_row_(0, 0)
         self.assertEqual(cell1.objectValue(), 'fol1')
@@ -66,10 +68,11 @@ class FolderListingTest(AsyncTestCase):
         self.assertEqual(cell2.objectValue(), 'fol2')
 
     def test_folders_updated(self):
-        from tinymail.ui_delegates import FolderListing
+        from tinymail.ui_delegates import AccountController
         account = _account_for_test()
         folders_pane = get_app_delegate().foldersPane
-        folder_listing = FolderListing.create(folders_pane, account)
+        account_controller = AccountController.newWithAccount_(account)
+        get_app_delegate().setAccountController_(account_controller)
 
         with mock_worker(fol2={}, fol3={}):
             account.perform_update()
@@ -80,19 +83,20 @@ class FolderListingTest(AsyncTestCase):
         self.assertEqual(cell2.objectValue(), 'fol3')
 
     def test_select_folder(self):
-        from tinymail.ui_delegates import FolderListing
+        from tinymail.ui_delegates import AccountController
         account = _account_for_test()
         folders_pane = get_app_delegate().foldersPane
         with mock_worker(fol1={6: None, 8: None}, fol2={}):
             account.perform_update()
-        folder_listing = FolderListing.create(folders_pane, account)
+        account_controller = AccountController.newWithAccount_(account)
+        get_app_delegate().setAccountController_(account_controller)
 
         with listen_for(signal('ui-folder-selected')) as caught_signals:
             rows = objc_index_set([1])
             folders_pane.selectRowIndexes_byExtendingSelection_(rows, False)
 
         self.assertEqual(caught_signals, [
-            (folder_listing, {'folder': account.get_folder('fol2')}),
+            (account_controller, {'folder': account.get_folder('fol2')}),
         ])
 
 class MessageListingTest(AsyncTestCase):
