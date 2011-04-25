@@ -158,36 +158,55 @@ class FolderController(NSObject):
         signal('ui-message-selected').send(self, message=new_value)
 
 
-class MessageView(NSObject):
-    @classmethod
-    def create(cls, web_view, message):
-        self = cls.alloc().init()
-        self.web_view = web_view
-        if message is None:
-            self._update_view_with_string("")
-        else:
-            self._update_view_with_string("Loading...")
-            full_message_cb = message.load_full()
-            full_message_cb.add(self.show_full_message)
+class MessageController(NSObject):
+    def init(self):
+        self = super(MessageController, self).init()
+        self.message = None
+        self.web_view = None
         return self
 
-    def _configure_web_view(self):
-        web_view_prefs = self.web_view.preferences()
-        web_view_prefs.setJavaEnabled_(False)
-        web_view_prefs.setJavaScriptEnabled_(False)
-        web_view_prefs.setPluginsEnabled_(False)
-        web_view_prefs.setUsesPageCache_(False)
+    @classmethod
+    def newBlank(cls):
+        return cls.alloc().init()
 
-    def show_full_message(self, message):
-        self._update_view_with_string(message.raw_full)
+    @classmethod
+    def controllerWithMessage_(cls, message):
+        self = cls.alloc().init()
+        self.message = message
+        return self
 
-    def _update_view_with_string(self, str_data):
+    def update_view_with_string(self, str_data):
+        if self.web_view is None:
+            return
+
         ns_str = NSString.stringWithString_(str_data.decode('latin-1'))
         data = ns_str.dataUsingEncoding_(NSISOLatin1StringEncoding)
         url = NSURL.URLWithString_('about:blank')
         frame = self.web_view.mainFrame()
         frame.loadData_MIMEType_textEncodingName_baseURL_(data, 'text/plain',
                                                           'latin-1', url)
+
+    def setView_(self, web_view):
+        self.web_view = web_view
+        if web_view is None:
+            return
+
+        web_view_prefs = self.web_view.preferences()
+        web_view_prefs.setJavaEnabled_(False)
+        web_view_prefs.setJavaScriptEnabled_(False)
+        web_view_prefs.setPlugInsEnabled_(False)
+        web_view_prefs.setUsesPageCache_(False)
+
+        if self.message is None:
+            self.update_view_with_string("")
+            return
+
+        def show_full_message(message):
+            self.update_view_with_string(message.raw_full)
+
+        self.update_view_with_string("Loading...")
+        full_message_cb = self.message.load_full()
+        full_message_cb.add(show_full_message)
 
 
 class ActivityDelegate(NSObject):
@@ -253,6 +272,7 @@ class tinymailAppDelegate(NSObject):
         self.controllers = { # because we have ownership of the controllers
             'account': AccountController.newBlank(),
             'folder': FolderController.newBlank(),
+            'message': MessageController.newBlank(),
         }
         return self
 
@@ -265,6 +285,11 @@ class tinymailAppDelegate(NSObject):
         self.controllers['folder'].setView_(None)
         self.controllers['folder'] = fc
         self.controllers['folder'].setView_(self.messagesPane)
+
+    def setMessageController_(self, mc):
+        self.controllers['message'].setView_(None)
+        self.controllers['message'] = mc
+        self.controllers['message'].setView_(self.messageView)
 
     def applicationDidFinishLaunching_(self, notification):
         if devel_action == 'nose':
@@ -300,7 +325,8 @@ class tinymailAppDelegate(NSObject):
         signal('ui-folder-selected').connect(folder_selected, weak=False)
 
         def message_selected(sender, message):
-            MessageView.create(self.messageView, message)
+            mc = MessageController.controllerWithMessage_(message)
+            self.setMessageController_(mc)
         signal('ui-message-selected').connect(message_selected, weak=False)
 
     @objc.IBAction
