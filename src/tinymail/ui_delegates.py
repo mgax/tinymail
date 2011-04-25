@@ -14,7 +14,7 @@ _signals = [signal(name) for name in
 class FolderListingItem(NSObject):
     @classmethod
     def itemWithFolder_(cls, folder):
-        item = FolderListingItem.new()
+        item = FolderListingItem.alloc().init()
         item.folder = folder
         return item
 
@@ -22,7 +22,7 @@ class FolderListingItem(NSObject):
 class FolderListing(NSObject):
     @classmethod
     def create(cls, outline_view, account):
-        self = cls.new()
+        self = cls.alloc().init()
         self.outline_view = outline_view
         outline_view.setDataSource_(self)
         outline_view.setDelegate_(self)
@@ -78,7 +78,7 @@ class FolderListing(NSObject):
 class MessageListing(NSObject):
     @classmethod
     def create(cls, table_view, folder):
-        self = cls.new()
+        self = cls.alloc().init()
         self.table_view = table_view
         table_view.setDelegate_(self)
         table_view.setDataSource_(self)
@@ -138,7 +138,7 @@ class MessageListing(NSObject):
 class MessageView(NSObject):
     @classmethod
     def create(cls, web_view, message):
-        self = cls.new()
+        self = cls.alloc().init()
         self.web_view = web_view
         if message is None:
             self._update_view_with_string("")
@@ -170,7 +170,7 @@ class MessageView(NSObject):
 class ActivityDelegate(NSObject):
     @classmethod
     def create(cls, table_view):
-        self = cls.new()
+        self = cls.alloc().init()
         self.table_view = table_view
         table_view.setDelegate_(self)
         table_view.setDataSource_(self)
