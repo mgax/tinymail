@@ -75,35 +75,45 @@ class FolderListing(NSObject):
         signal('ui-folder-selected').send(self, folder=new_value)
 
 
-class MessageListing(NSObject):
-    @classmethod
-    def create(cls, table_view, folder):
-        self = cls.alloc().init()
-        self.table_view = table_view
-        table_view.setDelegate_(self)
-        table_view.setDataSource_(self)
-        self._set_up_columns()
-        if folder is not None:
-            self.cb = lambda f: self.messages_updated(f._messages)
-            signal('folder-updated').connect(self.cb, folder)
-            self.messages_updated(folder._messages)
+class FolderController(NSObject):
+    def init(self):
+        self = super(FolderController, self).init()
+        self.messages = []
+        self.table_view = None
         return self
 
-    def _set_up_columns(self):
-        col0, col1 = self.table_view.tableColumns()
+    @classmethod
+    def newBlank(cls):
+        return cls.alloc().init()
+
+    @classmethod
+    def controllerWithFolder_(cls, folder):
+        self = cls.alloc().init()
+        self.cb = lambda f: self.messages_updated(f._messages)
+        signal('folder-updated').connect(self.cb, folder)
+        self.messages_updated(folder._messages)
+        return self
+
+    def setView_(self, table_view):
+        self.table_view = table_view
+        if table_view is None:
+            return
+
+        table_view.setDelegate_(self)
+        table_view.setDataSource_(self)
+
+        col0, col1 = table_view.tableColumns()
         col0.setIdentifier_('From')
         col0.headerCell().setTitle_("Sender")
         col1.setIdentifier_('Subject')
         col1.headerCell().setTitle_("Title")
 
-    def init(self):
-        self.messages = []
-        self._folder = None
-        return super(MessageListing, self).init()
+        table_view.reloadData()
 
     def messages_updated(self, messages):
         self.messages = [msg for (uid, msg) in sorted(messages.iteritems())]
-        self.table_view.reloadData()
+        if self.table_view is not None:
+            self.table_view.reloadData()
 
     def numberOfRowsInTableView_(self, table_view):
         return len(self.messages)
@@ -225,6 +235,18 @@ class tinymailAppDelegate(NSObject):
     messageView = objc.IBOutlet()
     activityTable = objc.IBOutlet()
 
+    def init(self):
+        self = super(tinymailAppDelegate, self).init()
+        self.controllers = { # because we have ownership of the controllers
+            'folder': FolderController.newBlank(),
+        }
+        return self
+
+    def setFolderController_(self, fc):
+        self.controllers['folder'].setView_(None)
+        self.controllers['folder'] = fc
+        self.controllers['folder'].setView_(self.messagesPane)
+
     def applicationDidFinishLaunching_(self, notification):
         if devel_action == 'nose':
             self._run_nose_tests(notification.object())
@@ -254,7 +276,8 @@ class tinymailAppDelegate(NSObject):
         self.the_account.perform_update()
 
         def folder_selected(sender, folder):
-            MessageListing.create(self.messagesPane, folder)
+            fc = FolderController.controllerWithFolder_(folder)
+            self.setFolderController_(fc)
         signal('ui-folder-selected').connect(folder_selected, weak=False)
 
         def message_selected(sender, message):
