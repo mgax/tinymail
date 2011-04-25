@@ -49,10 +49,7 @@ class AccountController(NSObject):
         outline_view.reloadData()
 
     def folders_updated(self, account):
-        for item in self.items:
-            item.release()
-
-        self.items[:] = [FolderListingItem.itemWithFolder_(f).retain()
+        self.items[:] = [FolderListingItem.itemWithFolder_(f)
                          for n, f in sorted(account._folders.items())]
 
         if self.outline_view is not None:
