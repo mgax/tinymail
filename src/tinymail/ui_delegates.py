@@ -293,27 +293,27 @@ class tinymailAppDelegate(NSObject):
 
     def applicationDidFinishLaunching_(self, notification):
         if devel_action == 'nose':
-            self._run_nose_tests(notification.object())
+            self.run_nose_tests(notification.object())
             return
 
         if devel_action == 'devel':
-            self._set_up_debug()
-        self._set_up_ui()
+            self.set_up_debug()
+        self.set_up_ui()
 
     def applicationWillTerminate_(self, notification):
         if hasattr(self, 'the_db'):
             self.the_db.close()
 
-    def _run_nose_tests(self, app):
+    def run_nose_tests(self, app):
         import runtests
         cb = runtests.main_o()
         cb.add(lambda _ign: app.terminate_(self))
 
-    def _set_up_debug(self):
+    def set_up_debug(self):
         Debugging.installPythonExceptionHandler()
         logging.basicConfig(level=logging.INFO)
 
-    def _set_up_ui(self):
+    def set_up_ui(self):
         self.the_db = open_db()
         self.the_account = Account(read_config(), self.the_db)
         self.setAccountController_(AccountController.newWithAccount_(self.the_account))
