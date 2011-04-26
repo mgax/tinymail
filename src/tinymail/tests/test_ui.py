@@ -54,10 +54,8 @@ class AccountControllerTest(AsyncTestCase):
 
     def test_show_folders(self):
         from tinymail.ui_delegates import AccountController
-        account = _account_for_test()
+        account = account_with_folders(fol1={6: None, 8: None}, fol2={})
         folders_pane = get_app_delegate().foldersPane
-        with mock_worker(fol1={6: None, 8: None}, fol2={}):
-            account.perform_update()
 
         account_controller = AccountController.newWithAccount_(account)
         get_app_delegate().setAccountController_(account_controller)
@@ -69,7 +67,7 @@ class AccountControllerTest(AsyncTestCase):
 
     def test_folders_updated(self):
         from tinymail.ui_delegates import AccountController
-        account = _account_for_test()
+        account = account_with_folders()
         folders_pane = get_app_delegate().foldersPane
         account_controller = AccountController.newWithAccount_(account)
         get_app_delegate().setAccountController_(account_controller)
@@ -84,10 +82,8 @@ class AccountControllerTest(AsyncTestCase):
 
     def test_select_folder(self):
         from tinymail.ui_delegates import AccountController
-        account = _account_for_test()
+        account = account_with_folders(fol1={6: None, 8: None}, fol2={})
         folders_pane = get_app_delegate().foldersPane
-        with mock_worker(fol1={6: None, 8: None}, fol2={}):
-            account.perform_update()
         account_controller = AccountController.newWithAccount_(account)
         get_app_delegate().setAccountController_(account_controller)
 
