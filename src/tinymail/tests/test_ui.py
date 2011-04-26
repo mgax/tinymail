@@ -25,6 +25,13 @@ def sleep(delay):
     AppHelper.callLater(delay, cb, None)
     return cb
 
+def setup_account_controller(account):
+    from tinymail.ui_delegates import AccountController
+    folders_pane = get_app_delegate().foldersPane
+    account_controller = AccountController.newWithAccount_(account)
+    get_app_delegate().setAccountController_(account_controller)
+    return folders_pane
+
 def setup_folder_controller(folder):
     from tinymail.ui_delegates import FolderController
     app_delegate = get_app_delegate()
@@ -34,13 +41,9 @@ def setup_folder_controller(folder):
     return messages_pane
 
 def cleanup_ui(app_delegate):
-    from tinymail.ui_delegates import AccountController
     from tinymail.account import Folder
-
+    setup_account_controller(_account_for_test())
     setup_folder_controller(Folder(None, 'f'))
-
-    ac = AccountController.newWithAccount_(_account_for_test())
-    app_delegate.setAccountController_(ac)
 
 def objc_index_set(values):
     from Foundation import NSMutableIndexSet
@@ -62,10 +65,7 @@ class AccountControllerTest(AsyncTestCase):
     def test_show_folders(self):
         from tinymail.ui_delegates import AccountController
         account = account_with_folders(fol1={6: None, 8: None}, fol2={})
-        folders_pane = get_app_delegate().foldersPane
-
-        account_controller = AccountController.newWithAccount_(account)
-        get_app_delegate().setAccountController_(account_controller)
+        folders_pane = setup_account_controller(account)
 
         cell1 = folders_pane.preparedCellAtColumn_row_(0, 0)
         self.assertEqual(cell1.objectValue(), 'fol1')
@@ -75,9 +75,7 @@ class AccountControllerTest(AsyncTestCase):
     def test_folders_updated(self):
         from tinymail.ui_delegates import AccountController
         account = account_with_folders()
-        folders_pane = get_app_delegate().foldersPane
-        account_controller = AccountController.newWithAccount_(account)
-        get_app_delegate().setAccountController_(account_controller)
+        folders_pane = setup_account_controller(account)
 
         with mock_worker(fol2={}, fol3={}):
             account.perform_update()
@@ -90,9 +88,8 @@ class AccountControllerTest(AsyncTestCase):
     def test_select_folder(self):
         from tinymail.ui_delegates import AccountController
         account = account_with_folders(fol1={6: None, 8: None}, fol2={})
-        folders_pane = get_app_delegate().foldersPane
-        account_controller = AccountController.newWithAccount_(account)
-        get_app_delegate().setAccountController_(account_controller)
+        folders_pane = setup_account_controller(account)
+        account_controller = folders_pane.delegate()
 
         with listen_for(signal('ui-folder-selected')) as caught_signals:
             rows = objc_index_set([1])
