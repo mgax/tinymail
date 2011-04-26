@@ -25,12 +25,19 @@ def sleep(delay):
     AppHelper.callLater(delay, cb, None)
     return cb
 
+def setup_folder_controller(folder):
+    from tinymail.ui_delegates import FolderController
+    app_delegate = get_app_delegate()
+    messages_pane = app_delegate.messagesPane
+    folder_controller = FolderController.controllerWithFolder_(folder)
+    app_delegate.setFolderController_(folder_controller)
+    return messages_pane
+
 def cleanup_ui(app_delegate):
-    from tinymail.ui_delegates import AccountController, FolderController
+    from tinymail.ui_delegates import AccountController
     from tinymail.account import Folder
 
-    fc = FolderController.controllerWithFolder_(Folder(None, 'f'))
-    app_delegate.setFolderController_(fc)
+    setup_folder_controller(Folder(None, 'f'))
 
     ac = AccountController.newWithAccount_(_account_for_test())
     app_delegate.setAccountController_(ac)
@@ -100,16 +107,10 @@ class MessageListingTest(AsyncTestCase):
         cleanup_ui(get_app_delegate())
 
     def test_show_messages(self):
-        from tinymail.ui_delegates import FolderController
         msg6 = (6, [r'\Seen'], "From: me\nSubject: test message")
         msg8 = (8, [r'\Seen'], "From: her\nSubject: another test message")
         account = account_with_folders(fol1={6: msg6, 8: msg8})
-        folder = account.get_folder('fol1')
-        app_delegate = get_app_delegate()
-        messages_pane = app_delegate.messagesPane
-        folder_controller = FolderController.controllerWithFolder_(folder)
-        app_delegate.setFolderController_(folder_controller)
-
+        messages_pane = setup_folder_controller(account.get_folder('fol1'))
 
         sender1 = messages_pane.preparedCellAtColumn_row_(0, 0)
         subject1 = messages_pane.preparedCellAtColumn_row_(1, 0)
@@ -122,15 +123,10 @@ class MessageListingTest(AsyncTestCase):
         self.assertEqual(subject2.objectValue(), "another test message")
 
     def test_update_messages(self):
-        from tinymail.ui_delegates import FolderController
         msg6 = (6, [r'\Seen'], "From: me\nSubject: test message")
         msg8 = (8, [r'\Seen'], "From: her\nSubject: another test message")
         account = account_with_folders(fol1={})
-        folder = account.get_folder('fol1')
-        app_delegate = get_app_delegate()
-        messages_pane = app_delegate.messagesPane
-        folder_controller = FolderController.controllerWithFolder_(folder)
-        app_delegate.setFolderController_(folder_controller)
+        messages_pane = setup_folder_controller(account.get_folder('fol1'))
 
         with mock_worker(fol1={6: msg6, 8: msg8}):
             account.perform_update()
@@ -142,15 +138,12 @@ class MessageListingTest(AsyncTestCase):
         self.assertEqual(subject2.objectValue(), "another test message")
 
     def test_select_message(self):
-        from tinymail.ui_delegates import FolderController
         msg6 = (6, [r'\Seen'], "From: me\nSubject: test message")
         msg8 = (8, [r'\Seen'], "From: her\nSubject: another test message")
         account = account_with_folders(fol1={6: msg6, 8: msg8})
         fol1 = account.get_folder('fol1')
-        app_delegate = get_app_delegate()
-        messages_pane = app_delegate.messagesPane
-        folder_controller = FolderController.controllerWithFolder_(fol1)
-        app_delegate.setFolderController_(folder_controller)
+        messages_pane = setup_folder_controller(account.get_folder('fol1'))
+        folder_controller = messages_pane.delegate()
 
         with listen_for(signal('ui-message-selected')) as caught_signals:
             rows = objc_index_set([1])
