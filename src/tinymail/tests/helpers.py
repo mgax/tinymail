@@ -59,7 +59,7 @@ def mock_worker(**folders):
 
     worker.disconnect.return_value = defer(None)
 
-    worker._messages = messages
+    worker.message_in_folder = messages_in_folder
 
     with patch('tinymail.account.get_worker', Mock(return_value=worker)):
         yield worker

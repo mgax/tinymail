@@ -100,7 +100,7 @@ class AccountUpdateTest(unittest.TestCase):
 
         with mock_worker(fol1={6: None, 8: None, 13: None}) as worker:
             account.perform_update()
-            _index = worker._messages[13]['index']
+            _index = worker.message_in_folder['fol1'][13]['index']
             worker.get_message_headers.assert_called_once_with(set([_index]))
 
     def test_empty_folder(self):
