@@ -155,7 +155,7 @@ class LocalDataTest(unittest.TestCase):
         msg1bis = (13, set([r'\Seen', r'\Answered']), "Subject: hi!")
 
         messages = sorted(db_folder.list_messages())
-        self.assertEqual(messages, [msg1, msg2])
+        self.assertEqual(messages, [msg1bis, msg2])
 
     def test_set_message_flags_no_message(self):
         db = mock_db()

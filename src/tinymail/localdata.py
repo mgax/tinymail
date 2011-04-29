@@ -68,9 +68,9 @@ class DBFolder(object):
             msg = ("Folder %r in account %r has no message with uid %r"
                    % (self._account.name, self.name, uid))
             raise KeyError(msg)
-        update_query = ("update message set uid = ? "
+        update_query = ("update message set flags = ? "
                         "where account = ? and folder = ? and uid = ?")
-        row = (self._account.name, self.name, uid, flatten(flags))
+        row = (flatten(flags), self._account.name, self.name, uid)
         self._execute(update_query, row)
 
     def list_messages(self):
