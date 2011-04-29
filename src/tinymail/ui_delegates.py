@@ -1,3 +1,4 @@
+import os, os.path
 import logging
 import email
 import objc
@@ -304,6 +305,10 @@ class tinymailAppDelegate(NSObject):
 
         if devel_action == 'devel':
             self.set_up_debug()
+
+        config_path = os.path.join(os.environ['HOME'], '.tinymail')
+        self.configuration = Configuration(config_path)
+        self.the_db = open_db(self.configuration)
         self.set_up_ui()
 
     def applicationWillTerminate_(self, notification):
@@ -320,8 +325,7 @@ class tinymailAppDelegate(NSObject):
         logging.basicConfig(level=logging.INFO)
 
     def set_up_ui(self):
-        self.the_db = open_db()
-        self.the_account = Account(read_config(), self.the_db)
+        self.the_account = Account(self.configuration.settings, self.the_db)
         self.setAccountController_(AccountController.newWithAccount_(self.the_account))
         self.the_account.perform_update()
 
@@ -339,16 +343,15 @@ class tinymailAppDelegate(NSObject):
     def doSync_(self, sender):
         self.the_account.perform_update()
 
-def open_db():
-    import os.path
-    from tinymail.localdata import open_local_db
-    db_path = os.path.join(os.environ['HOME'], '.tinymail/db.sqlite3')
-    return open_local_db(db_path)
+class Configuration(object):
+    def __init__(self, home):
+        self.home = home
+        cfg_path = os.path.join(self.home, 'account.json')
+        import json
+        with open(cfg_path, 'rb') as f:
+            self.settings = json.loads(f.read())
 
-def read_config():
-    import os
-    from os import path
-    import json
-    cfg_path = path.join(os.environ['HOME'], '.tinymail/account.json')
-    with open(cfg_path, 'rb') as f:
-        return json.loads(f.read())
+def open_db(configuration):
+    from tinymail.localdata import open_local_db
+    db_path = os.path.join(configuration.home, 'db.sqlite3')
+    return open_local_db(db_path)
