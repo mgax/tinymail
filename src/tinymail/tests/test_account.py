@@ -164,6 +164,20 @@ class AccountUpdateTest(unittest.TestCase):
         self.assertEqual([m.raw_headers for m in fol1.list_messages()],
                          [msg13_bis_data[2]])
 
+    def test_message_flags_changed(self):
+        account = _account_for_test()
+        msg13_data = (13, set([r'\Seen']), "Subject: test message")
+        msg13_bis_data = (13, set([r'\Flagged']), "Subject: test message")
+        with mock_worker(fol1={13: msg13_data}):
+            account.perform_update()
+
+        with mock_worker(fol1={13: msg13_bis_data}):
+            account.perform_update()
+
+        fol1 = account.get_folder('fol1')
+        self.assertEqual([m.flags for m in fol1.list_messages()],
+                         [set(['\\Flagged'])])
+
 class PersistenceTest(unittest.TestCase):
     def test_folders(self):
         db = mock_db()
@@ -253,3 +267,19 @@ class PersistenceTest(unittest.TestCase):
         self.assertEqual(fol1._uidvalidity, 1239)
         self.assertEqual([m.raw_headers for m in fol1.list_messages()],
                          [msg13_bis_data[2]])
+
+    def test_message_flags_changed(self):
+        db = mock_db()
+        account = _account_for_test(db=db)
+        msg13_data = (13, set([r'\Seen']), "Subject: test message")
+        msg13_bis_data = (13, set([r'\Flagged']), "Subject: test message")
+        with mock_worker(fol1={13: msg13_data}):
+            account.perform_update()
+
+        with mock_worker(fol1={13: msg13_bis_data}):
+            account.perform_update()
+
+        account2 = _account_for_test(db=db)
+        fol1 = account2.get_folder('fol1')
+        self.assertEqual([m.flags for m in fol1.list_messages()],
+                         [set(['\\Flagged'])])

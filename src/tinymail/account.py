@@ -132,6 +132,8 @@ class AccountUpdateJob(AsyncJob):
     @_o
     def update_folder(self, worker, folder):
         log.debug("Updating folder %r", folder.name)
+        db = self.account._db
+        db_folder = db.get_account('the-account').get_folder(folder.name)
         mbox_status, message_data = yield worker.get_messages_in_folder(folder.name)
 
         if mbox_status['UIDVALIDITY'] != folder._uidvalidity:
@@ -139,16 +141,16 @@ class AccountUpdateJob(AsyncJob):
                 log.info("Folder %r UIDVALIDITY has changed", folder.name)
                 folder._messages.clear()
             folder._uidvalidity = mbox_status['UIDVALIDITY']
-            db = self.account._db
-            db_account = db.get_account('the-account')
-            db_folder = db_account.get_folder(folder.name)
             with db.transaction():
                 db_folder.del_all_messages()
                 db_folder.set_uidvalidity(folder._uidvalidity)
 
-        new_message_ids = set(message_data) - set(folder._messages)
-        removed_message_ids = set(folder._messages) - set(message_data)
+        server_message_ids = set(message_data)
+        our_message_ids = set(folder._messages)
+        new_message_ids = server_message_ids - our_message_ids
+        removed_message_ids = our_message_ids - server_message_ids
 
+        # messages added on server; add them locally too
         new_indices = set()
         index_to_uuid = {}
         for uid in new_message_ids:
@@ -157,9 +159,6 @@ class AccountUpdateJob(AsyncJob):
             index_to_uuid[index] = uid
 
         if new_indices:
-            db = self.account._db
-            db_account = db.get_account('the-account')
-            db_folder = db_account.get_folder(folder.name)
             with db.transaction():
                 headers_by_index = yield worker.get_message_headers(new_indices)
                 sql_msgs = []
@@ -173,18 +172,28 @@ class AccountUpdateJob(AsyncJob):
 
             signal('folder-updated').send(folder)
 
+        # messages removed on server; remove them locally too
         if removed_message_ids:
-            db = self.account._db
-            db_account = db.get_account('the-account')
-            db_folder = db_account.get_folder(folder.name)
             with db.transaction():
                 for uid in removed_message_ids:
                     del folder._messages[uid]
                 db_folder.bulk_del_messages(removed_message_ids)
 
-        log.info("Finished updating folder %r: %d messages (%d new, %d del)",
+        # for existing messages, update their flags
+        flags_changed = 0
+        with db.transaction():
+            for uid in our_message_ids & server_message_ids:
+                message = folder._messages[uid]
+                new_flags = message_data[uid]['flags']
+                if message.flags != new_flags:
+                    message.flags = new_flags
+                    db_folder.set_message_flags(uid, new_flags)
+                    flags_changed += 1
+
+        log.info("Finished updating folder %r: %d messages "
+                 "(%d new, %d del, %d flags)",
                  folder.name, len(message_data),
-                 len(new_indices), len(removed_message_ids))
+                 len(new_indices), len(removed_message_ids), flags_changed)
 
 class MessageLoadFullJob(AsyncJob):
     def __init__(self, message):
