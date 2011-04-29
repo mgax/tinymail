@@ -170,8 +170,6 @@ class AccountUpdateJob(AsyncJob):
                     folder._messages[uid] = message
                 db_folder.bulk_add_messages(sql_msgs)
 
-            signal('folder-updated').send(folder)
-
         # messages removed on server; remove them locally too
         if removed_message_ids:
             with db.transaction():
@@ -189,6 +187,9 @@ class AccountUpdateJob(AsyncJob):
                     message.flags = new_flags
                     db_folder.set_message_flags(uid, new_flags)
                     flags_changed += 1
+
+        if new_indices or removed_message_ids or flags_changed:
+            signal('folder-updated').send(folder)
 
         log.info("Finished updating folder %r: %d messages "
                  "(%d new, %d del, %d flags)",

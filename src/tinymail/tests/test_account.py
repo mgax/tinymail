@@ -88,10 +88,12 @@ class AccountUpdateTest(unittest.TestCase):
             account.perform_update()
 
         with mock_worker(fol1={6: None}):
-            account.perform_update()
+            with listen_for(signal('folder-updated')) as caught_signals:
+                account.perform_update()
 
         fol1 = account.get_folder('fol1')
         self.assertEqual([m.uid for m in fol1.list_messages()], [6])
+        self.assertEqual(caught_signals, [(fol1, {})])
 
     def test_only_get_new_headers(self):
         account = _account_for_test()
@@ -172,11 +174,13 @@ class AccountUpdateTest(unittest.TestCase):
             account.perform_update()
 
         with mock_worker(fol1={13: msg13_bis_data}):
-            account.perform_update()
+            with listen_for(signal('folder-updated')) as caught_signals:
+                account.perform_update()
 
         fol1 = account.get_folder('fol1')
         self.assertEqual([m.flags for m in fol1.list_messages()],
                          [set(['\\Flagged'])])
+        self.assertEqual(caught_signals, [(fol1, {})])
 
 class PersistenceTest(unittest.TestCase):
     def test_folders(self):
