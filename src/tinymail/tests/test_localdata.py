@@ -3,6 +3,7 @@ from helpers import mock_db
 
 msg1 = (13, set([r'\Seen']), "Subject: hi!")
 msg2 = (15, set(), "Subject: message 2")
+msg3 = (19, set(), "Subject: another")
 
 def db_account_folder(db, folder_name):
     with db.transaction():
@@ -147,7 +148,28 @@ class LocalDataTest(unittest.TestCase):
         db_folder = db_account_folder(db, 'archive')
 
         with db.transaction():
-            self.assertRaises(KeyError, db_folder.del_message, 13)
+            self.assertRaises(AssertionError, db_folder.del_message, 13)
+
+    def test_bulk_remove_messages(self):
+        db = mock_db()
+        db_folder = db_account_folder(db, 'archive')
+        with db.transaction():
+            db_folder.bulk_add_messages([msg1, msg2, msg3])
+
+        with db.transaction():
+            db_folder.bulk_del_messages([msg1[0], msg3[0]])
+
+        self.assertEqual(list(db_folder.list_messages()), [msg2])
+
+    def test_bulk_remove_messages_nonexistent(self):
+        db = mock_db()
+        db_folder = db_account_folder(db, 'archive')
+        with db.transaction():
+            db_folder.bulk_add_messages([msg1])
+
+        with db.transaction():
+            self.assertRaises(AssertionError,
+                              db_folder.bulk_del_messages, [msg1[0], msg3[0]])
 
     def test_remove_all_messagse(self):
         db = mock_db()

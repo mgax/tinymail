@@ -60,14 +60,21 @@ class DBFolder(object):
     def add_message(self, uid, flags, headers):
         return self.bulk_add_messages([(uid, flags, headers)])
 
+    def bulk_del_messages(self, uids):
+        sql_uids = ','.join(str(uid) for uid in uids)
+        check_query = (
+            "select count(uid) from message where "
+            "account = ? and folder = ? and uid in (%s)" % sql_uids)
+        res = self._execute(check_query, (self._account.name, self.name))
+        assert single_result(res) == len(uids), "Message(s) don't exist"
+
+        delete_query = (
+            "delete from message where "
+            "account = ? and folder = ? and uid in (%s)" % sql_uids)
+        self._execute(delete_query, (self._account.name, self.name))
+
     def del_message(self, uid):
-        if self._count_messages(uid) == 0:
-            msg = ("Folder %r in account %r has no message with uid %r"
-                   % (self._account.name, self.name, uid))
-            raise KeyError(msg)
-        delete_query = ("delete from message where "
-                        "account = ? and folder = ? and uid = ?")
-        self._execute(delete_query, (self._account.name, self.name, uid))
+        return self.bulk_del_messages([uid])
 
     def del_all_messages(self):
         delete_query = "delete from message where account = ? and folder = ?"
