@@ -114,13 +114,6 @@ class FolderController(NSObject):
 
         table_view.setDelegate_(self)
         table_view.setDataSource_(self)
-
-        col0, col1 = table_view.tableColumns()
-        col0.setIdentifier_('From')
-        col0.headerCell().setTitle_("Sender")
-        col1.setIdentifier_('Subject')
-        col1.headerCell().setTitle_("Title")
-
         table_view.reloadData()
 
     def messages_updated(self, messages):
