@@ -18,6 +18,9 @@ class DBFolder(object):
     def _execute(self, *args, **kwargs):
         return self._account._execute(*args, **kwargs)
 
+    def _executemany(self, *args, **kwargs):
+        return self._account._executemany(*args, **kwargs)
+
     def _count_messages(self, uid):
         select_query = ("select count(*) from message "
                         "where account = ? and folder = ? and uid = ?")
@@ -36,18 +39,26 @@ class DBFolder(object):
         row = (uidvalidity, self._account.name, self.name)
         self._execute(update_query, row)
 
-    def add_message(self, uid, flags, headers):
-        # TODO check arguments
-        if self._count_messages(uid) > 0:
-            msg = ("Folder %r in account %r already has a message with uid %r"
-                   % (self._account.name, self.name, uid))
-            raise AssertionError(msg)
+    def bulk_add_messages(self, data):
+        check_query = ("select count(*) from message where "
+                       "account = ? and folder = ? and uid in (%s)"
+                       % ','.join(str(row[0]) for row in data))
+        res = self._execute(check_query, (self._account.name, self.name))
+        assert single_result(res) == 0, "Some messages already exist"
+
+        def sql_rows():
+            account_name = self._account.name
+            folder_name = self.name
+            for uid, flags, headers in data:
+                yield (account_name, folder_name,
+                       uid, flatten(flags), headers.decode('latin-1'))
         insert_query = ("insert into message"
                         "(account, folder, uid, flags, headers) "
                         "values (?, ?, ?, ?, ?)")
-        l1_headers = headers.decode('latin-1')
-        row = (self._account.name, self.name, uid, flatten(flags), l1_headers)
-        self._execute(insert_query, row)
+        self._executemany(insert_query, sql_rows())
+
+    def add_message(self, uid, flags, headers):
+        return self.bulk_add_messages([(uid, flags, headers)])
 
     def del_message(self, uid):
         if self._count_messages(uid) == 0:
@@ -87,6 +98,9 @@ class DBAccount(object):
 
     def _execute(self, *args, **kwargs):
         return self._db._execute(*args, **kwargs)
+
+    def _executemany(self, *args, **kwargs):
+        return self._db._executemany(*args, **kwargs)
 
     def _count_folders(self, name):
         select_query = ("select count(*) from folder "
@@ -131,6 +145,10 @@ class LocalDataDB(object):
         if args[0].split(' ', 1)[0].lower() in modif_statements:
             assert self._transaction
         return self._connection.execute(*args, **kwargs)
+
+    def _executemany(self, *args, **kwargs):
+        assert self._transaction
+        return self._connection.executemany(*args, **kwargs)
 
     def get_account(self, name):
         return DBAccount(self, name)

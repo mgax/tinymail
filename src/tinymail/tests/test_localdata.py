@@ -110,6 +110,26 @@ class LocalDataTest(unittest.TestCase):
         with db.transaction():
             self.assertRaises(AssertionError, db_folder.add_message, *msg1)
 
+    def test_bulk_add_messages(self):
+        db = mock_db()
+        db_folder = db_account_folder(db, 'archive')
+
+        with db.transaction():
+            db_folder.bulk_add_messages([msg1, msg2])
+
+        messages = sorted(db_folder.list_messages())
+        self.assertEqual(messages, [msg1, msg2])
+
+    def test_bulk_add_messages_exising(self):
+        db = mock_db()
+        db_folder = db_account_folder(db, 'archive')
+        with db.transaction():
+            db_folder.add_message(*msg1)
+
+        with db.transaction():
+            self.assertRaises(AssertionError,
+                              db_folder.bulk_add_messages, [msg1, msg2])
+
     def test_remove_message(self):
         db = mock_db()
         db_folder = db_account_folder(db, 'archive')
