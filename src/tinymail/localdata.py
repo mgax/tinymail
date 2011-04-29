@@ -106,6 +106,7 @@ class DBAccount(object):
                                  (self.name, name))
         insert_query = "insert into folder(account, name) values (?, ?)"
         self._execute(insert_query, (self.name, name))
+        return DBFolder(self, name)
 
     def get_folder(self, name):
         if self._count_folders(name) == 0:

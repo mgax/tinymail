@@ -1,6 +1,13 @@
 import unittest2 as unittest
 from helpers import mock_db
 
+msg1 = (13, set([r'\Seen']), "Subject: hi!")
+msg2 = (15, set(), "Subject: message 2")
+
+def db_account_folder(db, folder_name):
+    with db.transaction():
+        return db.get_account('some account name').add_folder(folder_name)
+
 class LocalDataTest(unittest.TestCase):
     def test_folder(self):
         db = mock_db()
@@ -72,13 +79,7 @@ class LocalDataTest(unittest.TestCase):
 
     def test_messages(self):
         db = mock_db()
-        with db.transaction():
-            db_account = db.get_account('some account name')
-            db_account.add_folder('archive')
-            db_folder = db_account.get_folder('archive')
-
-        msg1 = (13, set([r'\Seen']), "Subject: hi!")
-        msg2 = (15, set(), "Subject: message 2")
+        db_folder = db_account_folder(db, 'archive')
 
         with db.transaction():
             db_folder.add_message(*msg1)
@@ -89,27 +90,21 @@ class LocalDataTest(unittest.TestCase):
 
     def test_message_nonascii_headers(self):
         db = mock_db()
-        with db.transaction():
-            db_account = db.get_account('some account name')
-            db_account.add_folder('archive')
-            db_folder = db_account.get_folder('archive')
+        db_folder = db_account_folder(db, 'archive')
 
-        msg1 = (13, set([r'\Seen']), "Subject: hi!\xec\xec\xff")
+        unicode_msg = (24, set([r'\Seen']), "Subject: hi!\xec\xec\xff")
 
         with db.transaction():
-            db_folder.add_message(*msg1)
+            db_folder.add_message(*unicode_msg)
 
         messages = sorted(db_folder.list_messages())
-        self.assertEqual(messages, [msg1])
+        self.assertEqual(messages, [unicode_msg])
         self.assertTrue(type(messages[0][2]) is str)
 
     def test_add_existing_message(self):
         db = mock_db()
-        msg1 = (13, set([r'\Seen']), "Subject: hi!")
+        db_folder = db_account_folder(db, 'archive')
         with db.transaction():
-            db_account = db.get_account('some account name')
-            db_account.add_folder('archive')
-            db_folder = db_account.get_folder('archive')
             db_folder.add_message(*msg1)
 
         with db.transaction():
@@ -117,12 +112,7 @@ class LocalDataTest(unittest.TestCase):
 
     def test_remove_message(self):
         db = mock_db()
-        with db.transaction():
-            db_account = db.get_account('some account name')
-            db_account.add_folder('archive')
-            db_folder = db_account.get_folder('archive')
-        msg1 = (13, set([r'\Seen']), "Subject: hi!")
-        msg2 = (15, set(), "Subject: message 2")
+        db_folder = db_account_folder(db, 'archive')
         with db.transaction():
             db_folder.add_message(*msg1)
             db_folder.add_message(*msg2)
@@ -134,22 +124,14 @@ class LocalDataTest(unittest.TestCase):
 
     def test_remove_nonexistent_message(self):
         db = mock_db()
-        with db.transaction():
-            db_account = db.get_account('some account name')
-            db_account.add_folder('archive')
-            db_folder = db_account.get_folder('archive')
+        db_folder = db_account_folder(db, 'archive')
 
         with db.transaction():
             self.assertRaises(KeyError, db_folder.del_message, 13)
 
     def test_remove_all_messagse(self):
         db = mock_db()
-        with db.transaction():
-            db_account = db.get_account('some account name')
-            db_account.add_folder('archive')
-            db_folder = db_account.get_folder('archive')
-        msg1 = (13, set([r'\Seen']), "Subject: hi!")
-        msg2 = (15, set(), "Subject: message 2")
+        db_folder = db_account_folder(db, 'archive')
         with db.transaction():
             db_folder.add_message(*msg1)
             db_folder.add_message(*msg2)
@@ -161,13 +143,7 @@ class LocalDataTest(unittest.TestCase):
 
     def test_set_message_flags(self):
         db = mock_db()
-        with db.transaction():
-            db_account = db.get_account('some account name')
-            db_account.add_folder('archive')
-            db_folder = db_account.get_folder('archive')
-
-        msg1 = (13, set([r'\Seen']), "Subject: hi!")
-        msg2 = (15, set(), "Subject: message 2")
+        db_folder = db_account_folder(db, 'archive')
 
         with db.transaction():
             db_folder.add_message(*msg1)
@@ -183,10 +159,7 @@ class LocalDataTest(unittest.TestCase):
 
     def test_set_message_flags_no_message(self):
         db = mock_db()
-        with db.transaction():
-            db_account = db.get_account('some account name')
-            db_account.add_folder('archive')
-            db_folder = db_account.get_folder('archive')
+        db_folder = db_account_folder(db, 'archive')
 
         with db.transaction():
             self.assertRaises(KeyError, db_folder.set_message_flags,
@@ -194,10 +167,9 @@ class LocalDataTest(unittest.TestCase):
 
     def test_require_transactions(self):
         db = mock_db()
+        db_account = db.get_account('some account name')
+        db_folder = db_account_folder(db, 'archive')
         with db.transaction():
-            db_account = db.get_account('some account name')
-            db_account.add_folder('archive')
-            db_folder = db_account.get_folder('archive')
             db_folder.add_message(13, set([r'\Seen']), "Subject: hi!")
 
         self.assertRaises(AssertionError, db_account.add_folder, 'other')
