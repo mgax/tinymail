@@ -128,14 +128,27 @@ class FolderController(NSObject):
         msg = self.messages[row]
         name = col.identifier()
         headers = email.message_from_string(msg.raw_headers)
+
         if name == 'Subject':
-            subject = headers['Subject']
-            if '\\Seen' in msg.flags:
-                return subject
-            else:
-                return '* ' + subject
+            return headers['Subject']
+
         elif name == 'From':
             return headers['From']
+
+        elif name == 'Date':
+            return headers['Date']
+
+        elif name == 'Unread':
+            if '\\Seen' in msg.flags:
+                return ""
+            else:
+                return "*"
+
+        elif name == 'Flagged':
+            if '\\Flagged' in msg.flags:
+                return "*"
+            else:
+                return ""
 
     def tableView_shouldSelectTableColumn_(self, table_view, col):
         return False
