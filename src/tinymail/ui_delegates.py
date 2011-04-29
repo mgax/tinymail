@@ -1,3 +1,4 @@
+import sys
 import os, os.path
 import logging
 import email
@@ -306,7 +307,10 @@ class tinymailAppDelegate(NSObject):
         if devel_action == 'devel':
             self.set_up_debug()
 
-        config_path = os.path.join(os.environ['HOME'], '.tinymail')
+        if len(sys.argv) > 1:
+            config_path = sys.argv[1]
+        else:
+            config_path = os.path.join(os.environ['HOME'], '.tinymail')
         self.configuration = Configuration(config_path)
         self.the_db = open_db(self.configuration)
         self.set_up_ui()

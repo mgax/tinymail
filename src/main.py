@@ -4,6 +4,7 @@ def load_python_stuff():
     if len(sys.argv) > 1 and sys.argv[1] in ('devel', 'nose'):
         sys.path[0:0] = ['src', 'sandbox/lib/python2.6/site-packages']
         devel_action = sys.argv[1]
+        del sys.argv[1]
 
     else:
         devel_action = None
