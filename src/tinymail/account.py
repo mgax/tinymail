@@ -162,12 +162,14 @@ class AccountUpdateJob(AsyncJob):
             db_folder = db_account.get_folder(folder.name)
             with db.transaction():
                 headers_by_index = yield worker.get_message_headers(new_indices)
+                sql_msgs = []
                 for index, raw_headers in headers_by_index.iteritems():
                     uid = index_to_uuid[index]
                     flags = message_data[uid]['flags']
-                    db_folder.add_message(uid, flags, raw_headers)
+                    sql_msgs.append((uid, flags, raw_headers))
                     message = Message(folder, uid, flags, raw_headers)
                     folder._messages[uid] = message
+                db_folder.bulk_add_messages(sql_msgs)
 
             signal('folder-updated').send(folder)
 
@@ -178,7 +180,7 @@ class AccountUpdateJob(AsyncJob):
             with db.transaction():
                 for uid in removed_message_ids:
                     del folder._messages[uid]
-                    db_folder.del_message(uid)
+                db_folder.bulk_del_messages(removed_message_ids)
 
         log.info("Finished updating folder %r: %d messages (%d new, %d del)",
                  folder.name, len(message_data),
