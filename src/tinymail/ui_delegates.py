@@ -312,6 +312,8 @@ class tinymailAppDelegate(NSObject):
         else:
             config_path = os.path.join(os.environ['HOME'], '.tinymail')
         self.configuration = Configuration(config_path)
+        from plugin import load_plugins
+        load_plugins(self.configuration)
         self.the_db = open_db(self.configuration)
         self.set_up_ui()
 
