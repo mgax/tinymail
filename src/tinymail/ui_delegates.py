@@ -13,6 +13,24 @@ _signals = [signal(name) for name in
             ('ui-folder-selected', 'ui-message-selected')]
 
 
+def objc_callback(func):
+    """
+    Wrap a PyObjC instancemethod so that Blinker can take a weakref. We store
+    the function on the object so that it gets garbage collected as normal.
+    """
+    assert isinstance(func, objc.selector)
+    assert isinstance(func.self, NSObject)
+
+    def wrapper(*args, **kwargs):
+        return func(*args, **kwargs)
+
+    ob = func.self
+    if not hasattr(ob, '-python-callbacks-'):
+        setattr(ob, '-python-callbacks-', [])
+    getattr(ob, '-python-callbacks-').append(wrapper)
+
+    return wrapper
+
 class FolderListingItem(NSObject):
     @classmethod
     def itemWithFolder_(cls, folder):
