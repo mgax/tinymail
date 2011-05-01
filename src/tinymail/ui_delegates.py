@@ -299,6 +299,7 @@ class tinymailAppDelegate(NSObject):
             'folder': FolderController.newBlank(),
             'message': MessageController.newBlank(),
         }
+        self.accounts = {}
         return self
 
     def setAccountController_(self, ac):
@@ -326,8 +327,10 @@ class tinymailAppDelegate(NSObject):
         self.set_up_ui()
 
         self.the_db = open_db(self.configuration)
-        self.the_account = Account(settings, self.the_db)
-        self.the_account.perform_update()
+        for account_config in settings['accounts']:
+            account = Account(account_config, self.the_db)
+            self.accounts[account.name] = account
+            account.perform_update()
 
         auto_sync_interval = settings.get('auto_sync', None)
         if auto_sync_interval is not None:
@@ -335,7 +338,8 @@ class tinymailAppDelegate(NSObject):
             timer_with_callback(auto_sync_interval * 60, True, self.auto_sync)
 
     def auto_sync(self):
-        self.the_account.perform_update()
+        for account in self.accounts.values():
+            account.perform_update()
 
     def applicationWillTerminate_(self, notification):
         if hasattr(self, 'the_db'):
@@ -359,7 +363,8 @@ class tinymailAppDelegate(NSObject):
 
     @objc.IBAction
     def doSync_(self, sender):
-        self.the_account.perform_update()
+        for account in self.accounts.values():
+            account.perform_update()
 
 class Configuration(object):
     def __init__(self, home):
