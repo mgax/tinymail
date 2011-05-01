@@ -85,7 +85,7 @@ class Message(object):
                 self._load_job = cb
             yield cb
 
-        yield Return(self)
+        yield Return(self.raw_full)
 
 def get_worker():
     return start_worker(ImapWorker())

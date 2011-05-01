@@ -226,8 +226,8 @@ class MessageController(NSObject):
             self.update_view_with_string("")
             return
 
-        def show_full_message(message):
-            self.update_view_with_string(message.raw_full)
+        def show_full_message(raw_full):
+            self.update_view_with_string(raw_full)
 
         self.update_view_with_string("Loading...")
         full_message_cb = self.message.load_full()
