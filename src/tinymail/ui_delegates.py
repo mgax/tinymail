@@ -53,8 +53,8 @@ class AccountController(NSObject):
     @classmethod
     def newWithAccount_(cls, account):
         self = cls.alloc().init()
-        self.cb = lambda a: self.folders_updated(a)
-        signal('account-updated').connect(self.cb, account)
+        sig_account = signal('account-updated')
+        sig_account.connect(objc_callback(self.folders_updated), account)
         self.folders_updated(account)
         return self
 
@@ -122,9 +122,9 @@ class FolderController(NSObject):
     @classmethod
     def controllerWithFolder_(cls, folder):
         self = cls.alloc().init()
-        self.cb = lambda f: self.messages_updated(f._messages)
-        signal('folder-updated').connect(self.cb, folder)
-        self.messages_updated(folder._messages)
+        sig_folder = signal('folder-updated')
+        sig_folder.connect(objc_callback(self.folder_updated), folder)
+        self.folder_updated(folder)
         return self
 
     def setView_(self, table_view):
@@ -136,8 +136,9 @@ class FolderController(NSObject):
         table_view.setDataSource_(self)
         table_view.reloadData()
 
-    def messages_updated(self, messages):
-        self.messages = [msg for (uid, msg) in sorted(messages.iteritems())]
+    def folder_updated(self, folder):
+        self.messages = [msg for (uid, msg) in
+                         sorted(folder._messages.iteritems())]
         if self.table_view is not None:
             self.table_view.reloadData()
 
