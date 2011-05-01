@@ -124,7 +124,7 @@ class FolderController(NSObject):
         self = cls.alloc().init()
         sig_folder = signal('folder-updated')
         sig_folder.connect(objc_callback(self.folder_updated), folder)
-        self.folder_updated(folder)
+        self.folder_updated(folder, [], [], [])
         return self
 
     def setView_(self, table_view):
@@ -136,7 +136,7 @@ class FolderController(NSObject):
         table_view.setDataSource_(self)
         table_view.reloadData()
 
-    def folder_updated(self, folder):
+    def folder_updated(self, folder, added, removed, flags_changed):
         self.messages = [msg for (uid, msg) in
                          sorted(folder._messages.iteritems())]
         if self.table_view is not None:

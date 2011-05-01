@@ -150,6 +150,8 @@ class AccountUpdateJob(AsyncJob):
         new_message_ids = server_message_ids - our_message_ids
         removed_message_ids = our_message_ids - server_message_ids
 
+        event_data = {'added': [], 'removed': [], 'flags_changed': []}
+
         # messages added on server; add them locally too
         new_indices = set()
         index_to_uuid = {}
@@ -168,6 +170,7 @@ class AccountUpdateJob(AsyncJob):
                     sql_msgs.append((uid, flags, raw_headers))
                     message = Message(folder, uid, flags, raw_headers)
                     folder._messages[uid] = message
+                    event_data['added'].append(uid)
                 db_folder.bulk_add_messages(sql_msgs)
 
         # messages removed on server; remove them locally too
@@ -175,6 +178,7 @@ class AccountUpdateJob(AsyncJob):
             with db.transaction():
                 for uid in removed_message_ids:
                     del folder._messages[uid]
+                    event_data['removed'].append(uid)
                 db_folder.bulk_del_messages(removed_message_ids)
 
         # for existing messages, update their flags
@@ -187,9 +191,10 @@ class AccountUpdateJob(AsyncJob):
                     message.flags = new_flags
                     db_folder.set_message_flags(uid, new_flags)
                     flags_changed += 1
+                    event_data['flags_changed'].append(uid)
 
         if new_indices or removed_message_ids or flags_changed:
-            signal('folder-updated').send(folder)
+            signal('folder-updated').send(folder, **event_data)
 
         log.info("Finished updating folder %r: %d messages "
                  "(%d new, %d del, %d flags)",

@@ -72,6 +72,8 @@ class AccountUpdateTest(unittest.TestCase):
 
     def test_list_messages(self):
         account = _account_for_test()
+        with mock_worker(fol1={6: None}):
+            account.perform_update()
 
         with mock_worker(fol1={6: None, 8: None}):
             with listen_for(signal('folder-updated')) as caught_signals:
@@ -80,7 +82,8 @@ class AccountUpdateTest(unittest.TestCase):
         fol1 = account.get_folder('fol1')
         self.assertEqual(set(m.uid for m in fol1.list_messages()),
                          set([6, 8]))
-        self.assertEqual(caught_signals, [(fol1, {})])
+        event_data = {'added': [8], 'removed': [], 'flags_changed': []}
+        self.assertEqual(caught_signals, [(fol1, event_data)])
 
     def test_message_removed_on_server(self):
         account = _account_for_test()
@@ -93,7 +96,8 @@ class AccountUpdateTest(unittest.TestCase):
 
         fol1 = account.get_folder('fol1')
         self.assertEqual([m.uid for m in fol1.list_messages()], [6])
-        self.assertEqual(caught_signals, [(fol1, {})])
+        event_data = {'added': [], 'removed': [8], 'flags_changed': []}
+        self.assertEqual(caught_signals, [(fol1, event_data)])
 
     def test_only_get_new_headers(self):
         account = _account_for_test()
@@ -180,7 +184,8 @@ class AccountUpdateTest(unittest.TestCase):
         fol1 = account.get_folder('fol1')
         self.assertEqual([m.flags for m in fol1.list_messages()],
                          [set(['\\Flagged'])])
-        self.assertEqual(caught_signals, [(fol1, {})])
+        event_data = {'added': [], 'removed': [], 'flags_changed': [13]}
+        self.assertEqual(caught_signals, [(fol1, event_data)])
 
 class PersistenceTest(unittest.TestCase):
     def test_folders(self):
