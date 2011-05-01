@@ -317,17 +317,6 @@ class tinymailAppDelegate(NSObject):
         self.controllers['message'].setView_(self.messageView)
 
     def applicationDidFinishLaunching_(self, notification):
-        if devel_action == 'nose':
-            self.run_nose_tests(notification.object())
-            return
-
-        if devel_action == 'devel':
-            self.set_up_debug()
-
-        if len(sys.argv) > 1:
-            config_path = sys.argv[1]
-        else:
-            config_path = os.path.join(os.environ['HOME'], '.tinymail')
         self.configuration = Configuration(config_path)
         settings = self.configuration.settings
 
@@ -351,15 +340,6 @@ class tinymailAppDelegate(NSObject):
     def applicationWillTerminate_(self, notification):
         if hasattr(self, 'the_db'):
             self.the_db.close()
-
-    def run_nose_tests(self, app):
-        import runtests
-        cb = runtests.main_o()
-        cb.add(lambda _ign: app.terminate_(self))
-
-    def set_up_debug(self):
-        Debugging.installPythonExceptionHandler()
-        logging.basicConfig(level=logging.INFO)
 
     def set_up_ui(self):
         def handle_account_opened(account):
@@ -393,3 +373,20 @@ def open_db(configuration):
     from tinymail.localdata import open_local_db
     db_path = os.path.join(configuration.home, 'db.sqlite3')
     return open_local_db(db_path)
+
+def develop():
+    from PyObjCTools import Debugging
+    Debugging.installPythonExceptionHandler()
+
+    logging.basicConfig(level=logging.INFO)
+
+    if len(sys.argv) > 1 and sys.argv[1] == 'nose':
+        del sys.argv[1]
+
+        def run_nose_tests(self, notif):
+            from tinymail import runtests
+            app = notif.object()
+            cb = runtests.main_o()
+            cb.add(lambda _ign: app.terminate_(self))
+
+        tinymailAppDelegate.applicationDidFinishLaunching_ = run_nose_tests

@@ -1,16 +1,19 @@
 def load_python_stuff():
-    import sys
+    import sys, os
 
-    if len(sys.argv) > 1 and sys.argv[1] in ('devel', 'nose'):
-        sys.path[0:0] = ['src', 'sandbox/lib/python2.6/site-packages']
-        devel_action = sys.argv[1]
+    if len(sys.argv) > 1:
+        config_path = sys.argv[1]
         del sys.argv[1]
-
     else:
-        devel_action = None
+        config_path = os.path.join(os.environ['HOME'], '.tinymail')
+
+    startup_path = os.path.join(config_path, 'startup.py')
+    if os.path.isfile(startup_path):
+        with open(startup_path, 'rb') as f:
+            exec(f.read())
 
     import tinymail.ui_delegates
-    tinymail.ui_delegates.devel_action = devel_action
+    tinymail.ui_delegates.config_path = config_path
 
 def main():
     load_python_stuff()
