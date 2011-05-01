@@ -8,7 +8,8 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 _signals = [signal(name) for name in
-            ('account-updated', 'folder-updated', 'message-updated')]
+            ('account-opened', 'account-updated', 'folder-updated',
+             'message-updated')]
 
 class Account(object):
     def __init__(self, config, db):
@@ -41,6 +42,7 @@ class Account(object):
             for uid, flags, raw_headers in db_folder.list_messages():
                 message = Message(folder, uid, flags, raw_headers)
                 folder._messages[uid] = message
+        signal('account-opened').send(self)
 
     def perform_update(self):
         if self._sync_job is not None:

@@ -331,10 +331,15 @@ class tinymailAppDelegate(NSObject):
         else:
             config_path = os.path.join(os.environ['HOME'], '.tinymail')
         self.configuration = Configuration(config_path)
+
         from plugin import load_plugins
         load_plugins(self.configuration)
-        self.the_db = open_db(self.configuration)
+
         self.set_up_ui()
+
+        self.the_db = open_db(self.configuration)
+        self.the_account = Account(self.configuration.settings, self.the_db)
+        self.the_account.perform_update()
 
     def applicationWillTerminate_(self, notification):
         if hasattr(self, 'the_db'):
@@ -350,9 +355,10 @@ class tinymailAppDelegate(NSObject):
         logging.basicConfig(level=logging.INFO)
 
     def set_up_ui(self):
-        self.the_account = Account(self.configuration.settings, self.the_db)
-        self.setAccountController_(AccountController.newWithAccount_(self.the_account))
-        self.the_account.perform_update()
+        def account_opened(account):
+            ac = AccountController.newWithAccount_(account)
+            self.setAccountController_(ac)
+        signal('account-opened').connect(account_opened, weak=False)
 
         def folder_selected(sender, folder):
             fc = FolderController.controllerWithFolder_(folder)
