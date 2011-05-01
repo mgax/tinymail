@@ -331,6 +331,7 @@ class tinymailAppDelegate(NSObject):
         else:
             config_path = os.path.join(os.environ['HOME'], '.tinymail')
         self.configuration = Configuration(config_path)
+        settings = self.configuration.settings
 
         from plugin import load_plugins
         load_plugins(self.configuration)
@@ -338,7 +339,15 @@ class tinymailAppDelegate(NSObject):
         self.set_up_ui()
 
         self.the_db = open_db(self.configuration)
-        self.the_account = Account(self.configuration.settings, self.the_db)
+        self.the_account = Account(settings, self.the_db)
+        self.the_account.perform_update()
+
+        auto_sync_interval = settings.get('auto_sync', None)
+        if auto_sync_interval is not None:
+            from async_cocoa import timer_with_callback
+            timer_with_callback(auto_sync_interval * 60, True, self.auto_sync)
+
+    def auto_sync(self):
         self.the_account.perform_update()
 
     def applicationWillTerminate_(self, notification):
