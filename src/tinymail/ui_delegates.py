@@ -6,12 +6,11 @@ import objc
 from Foundation import NSObject, NSURL, NSString, NSISOLatin1StringEncoding
 import AppKit
 from PyObjCTools import Debugging
-from blinker import signal
+from blinker import signal, Signal
 from tinymail.account import Account
 
-_signals = [signal(name) for name in
-            ('ui-folder-selected', 'ui-message-selected')]
-
+folder_selected = Signal()
+message_selected = Signal()
 
 def objc_callback(func):
     """
@@ -105,7 +104,7 @@ class AccountController(NSObject):
         else:
             new_value = outline_view.itemAtRow_(row).folder
 
-        signal('ui-folder-selected').send(self, folder=new_value)
+        folder_selected.send(self, folder=new_value)
 
 
 class FolderController(NSObject):
@@ -182,7 +181,7 @@ class FolderController(NSObject):
         row = table_view.selectedRow()
         new_value = (None if row == -1 else self.messages[row])
 
-        signal('ui-message-selected').send(self, message=new_value)
+        message_selected.send(self, message=new_value)
 
 
 class MessageController(NSObject):
@@ -372,12 +371,12 @@ class tinymailAppDelegate(NSObject):
         def folder_selected(sender, folder):
             fc = FolderController.controllerWithFolder_(folder)
             self.setFolderController_(fc)
-        signal('ui-folder-selected').connect(folder_selected, weak=False)
+        folder_selected.connect(folder_selected, weak=False)
 
         def message_selected(sender, message):
             mc = MessageController.controllerWithMessage_(message)
             self.setMessageController_(mc)
-        signal('ui-message-selected').connect(message_selected, weak=False)
+        message_selected.connect(message_selected, weak=False)
 
     @objc.IBAction
     def doSync_(self, sender):

@@ -1,6 +1,5 @@
 import unittest2 as unittest
 from monocle import _o
-from blinker import signal
 from helpers import mock_db, listen_for, mock_worker, AsyncTestCase
 
 def get_app_delegate():
@@ -86,12 +85,12 @@ class AccountControllerTest(AsyncTestCase):
         self.assertEqual(cell2.objectValue(), 'fol3')
 
     def test_select_folder(self):
-        from tinymail.ui_delegates import AccountController
+        from tinymail.ui_delegates import AccountController, folder_selected
         account = account_with_folders(fol1={6: None, 8: None}, fol2={})
         folders_pane = setup_account_controller(account)
         account_controller = folders_pane.delegate()
 
-        with listen_for(signal('ui-folder-selected')) as caught_signals:
+        with listen_for(folder_selected) as caught_signals:
             rows = objc_index_set([1])
             folders_pane.selectRowIndexes_byExtendingSelection_(rows, False)
 
@@ -135,6 +134,7 @@ class MessageListingTest(AsyncTestCase):
         self.assertEqual(subject2.objectValue(), "another test message")
 
     def test_select_message(self):
+        from tinymail.ui_delegates import message_selected
         msg6 = (6, [r'\Seen'], "From: me\nSubject: test message")
         msg8 = (8, [r'\Seen'], "From: her\nSubject: another test message")
         account = account_with_folders(fol1={6: msg6, 8: msg8})
@@ -142,7 +142,7 @@ class MessageListingTest(AsyncTestCase):
         messages_pane = setup_folder_controller(account.get_folder('fol1'))
         folder_controller = messages_pane.delegate()
 
-        with listen_for(signal('ui-message-selected')) as caught_signals:
+        with listen_for(message_selected) as caught_signals:
             rows = objc_index_set([1])
             messages_pane.selectRowIndexes_byExtendingSelection_(rows, False)
 
