@@ -6,8 +6,9 @@ import objc
 from Foundation import NSObject, NSURL, NSString, NSISOLatin1StringEncoding
 import AppKit
 from PyObjCTools import Debugging
-from blinker import signal, Signal
+from blinker import Signal
 from tinymail.account import Account
+from tinymail.account import account_opened, account_updated, folder_updated
 
 folder_selected = Signal()
 message_selected = Signal()
@@ -52,8 +53,7 @@ class AccountController(NSObject):
     @classmethod
     def newWithAccount_(cls, account):
         self = cls.alloc().init()
-        sig_account = signal('account-updated')
-        sig_account.connect(objc_callback(self.folders_updated), account)
+        account_updated.connect(objc_callback(self.folders_updated), account)
         self.folders_updated(account)
         return self
 
@@ -121,8 +121,7 @@ class FolderController(NSObject):
     @classmethod
     def controllerWithFolder_(cls, folder):
         self = cls.alloc().init()
-        sig_folder = signal('folder-updated')
-        sig_folder.connect(objc_callback(self.folder_updated), folder)
+        folder_updated.connect(objc_callback(self.folder_updated), folder)
         self.folder_updated(folder, [], [], [])
         return self
 
@@ -363,20 +362,20 @@ class tinymailAppDelegate(NSObject):
         logging.basicConfig(level=logging.INFO)
 
     def set_up_ui(self):
-        def account_opened(account):
+        def handle_account_opened(account):
             ac = AccountController.newWithAccount_(account)
             self.setAccountController_(ac)
-        signal('account-opened').connect(account_opened, weak=False)
+        account_opened.connect(handle_account_opened, weak=False)
 
-        def folder_selected(sender, folder):
+        def handle_folder_selected(sender, folder):
             fc = FolderController.controllerWithFolder_(folder)
             self.setFolderController_(fc)
-        folder_selected.connect(folder_selected, weak=False)
+        folder_selected.connect(handle_folder_selected, weak=False)
 
-        def message_selected(sender, message):
+        def handle_message_selected(sender, message):
             mc = MessageController.controllerWithMessage_(message)
             self.setMessageController_(mc)
-        message_selected.connect(message_selected, weak=False)
+        message_selected.connect(handle_message_selected, weak=False)
 
     @objc.IBAction
     def doSync_(self, sender):

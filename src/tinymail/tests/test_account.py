@@ -2,7 +2,6 @@ from mock import Mock, MagicMock
 import unittest2 as unittest
 from contextlib import contextmanager
 from monocle.callback import defer
-from blinker import signal
 from helpers import mock_db, listen_for, mock_worker
 
 def _account_for_test(config=None, db=None):
@@ -59,11 +58,12 @@ class FolderTest(unittest.TestCase):
 class AccountUpdateTest(unittest.TestCase):
 
     def test_list_folders(self):
+        from tinymail.account import account_updated
         account = _account_for_test()
         folders = {'fol1': {}, 'fol2': {}}
 
         with mock_worker(**folders):
-            with listen_for(signal('account-updated')) as caught_signals:
+            with listen_for(account_updated) as caught_signals:
                 account.perform_update()
 
         self.assertEqual(set(f.name for f in account.list_folders()),
@@ -71,12 +71,13 @@ class AccountUpdateTest(unittest.TestCase):
         self.assertEqual(caught_signals, [(account, {})])
 
     def test_list_messages(self):
+        from tinymail.account import folder_updated
         account = _account_for_test()
         with mock_worker(fol1={6: None}):
             account.perform_update()
 
         with mock_worker(fol1={6: None, 8: None}):
-            with listen_for(signal('folder-updated')) as caught_signals:
+            with listen_for(folder_updated) as caught_signals:
                 account.perform_update()
 
         fol1 = account.get_folder('fol1')
@@ -86,12 +87,13 @@ class AccountUpdateTest(unittest.TestCase):
         self.assertEqual(caught_signals, [(fol1, event_data)])
 
     def test_message_removed_on_server(self):
+        from tinymail.account import folder_updated
         account = _account_for_test()
         with mock_worker(fol1={6: None, 8: None}):
             account.perform_update()
 
         with mock_worker(fol1={6: None}):
-            with listen_for(signal('folder-updated')) as caught_signals:
+            with listen_for(folder_updated) as caught_signals:
                 account.perform_update()
 
         fol1 = account.get_folder('fol1')
@@ -118,6 +120,7 @@ class AccountUpdateTest(unittest.TestCase):
         self.assertFalse(worker.get_message_headers.called)
 
     def test_load_full_message(self):
+        from tinymail.account import message_updated
         account = _account_for_test()
         mime_message = "Subject: hi\r\n\r\nHello world!"
 
@@ -125,7 +128,7 @@ class AccountUpdateTest(unittest.TestCase):
             account.perform_update()
             message = account.get_folder('fol1')._messages[6]
             worker.get_message_body.return_value = defer(mime_message)
-            with listen_for(signal('message-updated')) as caught_signals:
+            with listen_for(message_updated) as caught_signals:
                 message.load_full()
 
         self.assertEqual(message.raw_full, mime_message)
@@ -171,6 +174,7 @@ class AccountUpdateTest(unittest.TestCase):
                          [msg13_bis_data[2]])
 
     def test_message_flags_changed(self):
+        from tinymail.account import folder_updated
         account = _account_for_test()
         msg13_data = (13, set([r'\Seen']), "Subject: test message")
         msg13_bis_data = (13, set([r'\Flagged']), "Subject: test message")
@@ -178,7 +182,7 @@ class AccountUpdateTest(unittest.TestCase):
             account.perform_update()
 
         with mock_worker(fol1={13: msg13_bis_data}):
-            with listen_for(signal('folder-updated')) as caught_signals:
+            with listen_for(folder_updated) as caught_signals:
                 account.perform_update()
 
         fol1 = account.get_folder('fol1')

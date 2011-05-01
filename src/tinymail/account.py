@@ -1,15 +1,16 @@
 import logging
 from monocle import _o, Return
-from blinker import signal
+from blinker import Signal
 from async import AsyncJob, start_worker
 from imap_worker import ImapWorker
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
-_signals = [signal(name) for name in
-            ('account-opened', 'account-updated', 'folder-updated',
-             'message-updated')]
+account_opened = Signal()
+account_updated = Signal()
+folder_updated = Signal()
+message_updated = Signal()
 
 class Account(object):
     def __init__(self, config, db):
@@ -42,7 +43,7 @@ class Account(object):
             for uid, flags, raw_headers in db_folder.list_messages():
                 message = Message(folder, uid, flags, raw_headers)
                 folder._messages[uid] = message
-        signal('account-opened').send(self)
+        account_opened.send(self)
 
     def perform_update(self):
         if self._sync_job is not None:
@@ -121,7 +122,7 @@ class AccountUpdateJob(AsyncJob):
                     db_account.del_folder(name)
                     del self.account._folders[name]
 
-        signal('account-updated').send(self.account)
+        account_updated.send(self.account)
 
         for name in mailbox_names:
             yield self.update_folder(worker, self.account._folders[name])
@@ -196,7 +197,7 @@ class AccountUpdateJob(AsyncJob):
                     event_data['flags_changed'].append(uid)
 
         if new_indices or removed_message_ids or flags_changed:
-            signal('folder-updated').send(folder, **event_data)
+            folder_updated.send(folder, **event_data)
 
         log.info("Finished updating folder %r: %d messages "
                  "(%d new, %d del, %d flags)",
@@ -226,6 +227,6 @@ class MessageLoadFullJob(AsyncJob):
         body = yield worker.get_message_body(uuid_to_index[message.uid])
         message.raw_full = body
 
-        signal('message-updated').send(message)
+        message_updated.send(message)
 
         self.message._load_job = None
