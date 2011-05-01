@@ -1,5 +1,9 @@
+import logging
 import re
 import imaplib
+
+log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
 
 list_pattern = re.compile(r'^\((?P<flags>[^\)]*)\) '
                           r'"(?P<delim>[^"]*)" '
@@ -48,14 +52,18 @@ if not getattr(imaplib.IMAP4_SSL.shutdown, '_patched_by_tinymail', False):
 
 class ImapWorker(object):
     def connect(self, host, login_name, login_pass):
+        log.debug("connecting to %r as %r", host, login_name)
         self.conn = ConnectionErrorWrapper(imaplib.IMAP4_SSL(host))
         self.conn.login(login_name, login_pass)
 
     def disconnect(self):
+        log.debug("disconnecting")
         self.conn.logout()
 
     def get_mailbox_names(self):
         """ Get a list of all mailbox names in the current account. """
+
+        log.debug("get_mailbox_names")
 
         paths = []
         for entry in self.conn.list():
@@ -74,6 +82,8 @@ class ImapWorker(object):
         """
         Select folder `folder_name`; return folder status + message flags.
         """
+
+        log.debug("get_messages_in_folder %r", folder_name)
 
         count = self.conn.select(folder_name.encode('ascii'), readonly=True)
         data = self.conn.status(folder_name.encode('ascii'),
@@ -102,6 +112,8 @@ class ImapWorker(object):
     def get_message_headers(self, message_indices):
         """ Get headers of specified messagse from current folder. """
 
+        log.debug("get_message_headers for %r", message_indices)
+
         msgs = ','.join(map(str, message_indices))
         data = self.conn.fetch(msgs, '(BODY.PEEK[HEADER] FLAGS)')
 
@@ -124,6 +136,8 @@ class ImapWorker(object):
         return headers_by_index
 
     def get_message_body(self, message_index):
+        log.debug("get_message_body for %r", message_index)
+
         data = self.conn.fetch(str(message_index), '(RFC822)')
         assert len(data) == 2 and data[1] == ')'
         assert isinstance(data[0], tuple) and len(data[0]) == 2
