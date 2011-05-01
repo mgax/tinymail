@@ -366,6 +366,14 @@ class TinymailAppDelegate(NSObject):
         for account in self.accounts.values():
             account.perform_update()
 
+    @objc.IBAction
+    def markReadUnread_(self, sender):
+        print 'unread'
+
+    @objc.IBAction
+    def markFlaggedUnflagged_(self, sender):
+        print 'unflagged'
+
 class Configuration(object):
     def __init__(self, home):
         self.home = home
