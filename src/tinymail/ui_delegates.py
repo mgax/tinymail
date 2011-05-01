@@ -285,7 +285,7 @@ class ActivityDelegate(NSObject):
         return False
 
 
-class tinymailAppDelegate(NSObject):
+class TinymailAppDelegate(NSObject):
     window = objc.IBOutlet()
     foldersPane = objc.IBOutlet()
     messagesPane = objc.IBOutlet()
@@ -293,7 +293,7 @@ class tinymailAppDelegate(NSObject):
     activityTable = objc.IBOutlet()
 
     def init(self):
-        self = super(tinymailAppDelegate, self).init()
+        self = super(TinymailAppDelegate, self).init()
         self.controllers = { # because we have ownership of the controllers
             'account': AccountController.newBlank(),
             'folder': FolderController.newBlank(),
@@ -394,4 +394,4 @@ def develop():
             cb = runtests.main_o()
             cb.add(lambda _ign: app.terminate_(self))
 
-        tinymailAppDelegate.applicationDidFinishLaunching_ = run_nose_tests
+        TinymailAppDelegate.applicationDidFinishLaunching_ = run_nose_tests
