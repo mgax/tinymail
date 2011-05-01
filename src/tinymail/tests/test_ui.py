@@ -11,6 +11,7 @@ def _account_for_test(config=None):
     from tinymail.account import Account
     if config is None:
         config = {
+            'name': 'my test account',
             'host': 'test_host',
             'login_name': 'test_username',
             'login_pass': 'test_password',

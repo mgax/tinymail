@@ -14,7 +14,7 @@ message_updated = Signal()
 
 class Account(object):
     def __init__(self, config, db):
-        self.name = "The Account"
+        self.name = config['name']
         self.config = config
         self._db = db
         self._folders = {}
