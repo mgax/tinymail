@@ -8,6 +8,8 @@ log.setLevel(logging.INFO)
 
 def load_plugins(configuration):
     plugins_path = os.path.join(configuration.home, 'plugins')
+    if not os.path.isdir(plugins_path):
+        return
 
     for folder_name in os.listdir(plugins_path):
         folder_path = os.path.join(plugins_path, folder_name)
