@@ -115,7 +115,7 @@ class ImapWorker(object):
         log.debug("get_message_headers for %r", message_indices)
 
         msgs = ','.join(map(str, message_indices))
-        data = self.conn.fetch(msgs, '(BODY.PEEK[HEADER] FLAGS)')
+        data = self.conn.fetch(msgs, '(FLAGS BODY.PEEK[HEADER])')
 
         def iter_fragments(data):
             data = iter(data)
