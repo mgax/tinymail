@@ -1,5 +1,6 @@
 import logging
 from Foundation import objc, NSObject, NSAutoreleasePool, NSTimer
+from PyObjCTools import AppHelper
 
 log = logging.getLogger(__name__)
 
@@ -18,9 +19,10 @@ def object_and_selector_for_callback(callback, *args, **kwargs):
     return obj, selector
 
 def call_on_main_thread(callback, *args, **kwargs):
-    obj, selector = object_and_selector_for_callback(callback, *args, **kwargs)
-    obj_later = obj.performSelectorOnMainThread_withObject_waitUntilDone_
-    obj_later(selector, None, False)
+    #obj, selector = object_and_selector_for_callback(callback, *args, **kwargs)
+    #obj_later = obj.performSelectorOnMainThread_withObject_waitUntilDone_
+    #obj_later(selector, None, False)
+    AppHelper.callAfter(callback, *args, **kwargs)
 
 def timer_with_callback(duration, repeats, callback, *args, **kwargs):
     obj, selector = object_and_selector_for_callback(callback, *args, **kwargs)
