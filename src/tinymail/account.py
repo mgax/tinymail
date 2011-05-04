@@ -128,6 +128,7 @@ class AccountUpdateJob(AsyncJob):
             yield self.update_folder(worker, self.account._folders[name])
 
         yield worker.disconnect()
+        worker.done()
         log.info("Update finished for account %r", self.account.name)
 
         self.account._sync_job = None
