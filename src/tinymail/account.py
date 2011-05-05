@@ -1,7 +1,7 @@
 import logging
 from monocle import _o, Return
 from blinker import Signal
-from async import AsyncJob, start_worker
+from async import AsyncJob, start_worker, SimpleWorkerManager
 from imap_worker import ImapWorker
 
 log = logging.getLogger(__name__)
@@ -20,6 +20,8 @@ class Account(object):
         self._folders = {}
         self._load_from_db()
         self._sync_job = None
+        self.worker_manager = SimpleWorkerManager(self._create_worker,
+                                                  self._desotry_worker)
 
     def get_imap_config(self):
         return dict( (k, self.config[k]) for k in
@@ -51,6 +53,17 @@ class Account(object):
         cb = AccountUpdateJob(self).start()
         if not hasattr(cb, 'result'):
             self._sync_job = cb
+
+    @_o
+    def _create_worker(self):
+        worker = _new_imap_worker()
+        yield worker.connect(**self.get_imap_config())
+        yield Return(worker)
+
+    @_o
+    def _desotry_worker(self, worker):
+        yield worker.disconnect()
+        worker.done()
 
 class Folder(object):
     def __init__(self, account, name):
@@ -87,7 +100,7 @@ class Message(object):
 
         yield Return(self.raw_full)
 
-def get_worker():
+def _new_imap_worker():
     return start_worker(ImapWorker())
 
 class AccountUpdateJob(AsyncJob):
@@ -96,9 +109,20 @@ class AccountUpdateJob(AsyncJob):
 
     @_o
     def do_stuff(self):
+        wm = self.account.worker_manager
+        worker = yield wm.get_worker()
+
+        try:
+            yield self.update_account(worker)
+
+        finally:
+            self.account._sync_job = None
+            yield wm.hand_back_worker(worker)
+
+    @_o
+    def update_account(self, worker):
         log.debug("Begin update of account %r", self.account.name)
-        worker = get_worker()
-        yield worker.connect(**self.account.get_imap_config())
+
         mailbox_names = yield worker.get_mailbox_names()
 
         new_mailbox_names = set(mailbox_names) - set(self.account._folders)
@@ -127,11 +151,7 @@ class AccountUpdateJob(AsyncJob):
         for name in mailbox_names:
             yield self.update_folder(worker, self.account._folders[name])
 
-        yield worker.disconnect()
-        worker.done()
         log.info("Update finished for account %r", self.account.name)
-
-        self.account._sync_job = None
 
     @_o
     def update_folder(self, worker, folder):
@@ -211,13 +231,20 @@ class MessageLoadFullJob(AsyncJob):
 
     @_o
     def do_stuff(self):
+        wm = self.message.folder.account.worker_manager
+        worker = yield wm.get_worker()
+
+        try:
+            yield self.load_full_message(worker)
+
+        finally:
+            yield wm.hand_back_worker(worker)
+
+    @_o
+    def load_full_message(self, worker):
         message = self.message
         log.debug("Loading full message %r in folder %r",
                  message.uid, message.folder.name)
-        worker = get_worker()
-        config = dict( (k, message.folder.account.config[k]) for k in
-                       ('host', 'login_name', 'login_pass') )
-        yield worker.connect(**config)
 
         mbox_status, message_data = yield worker.get_messages_in_folder(message.folder.name)
         uuid_to_index = {}

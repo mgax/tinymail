@@ -22,6 +22,7 @@ def mock_worker(**folders):
     from tinymail.imap_worker import ImapWorker
 
     worker = Mock(spec=ImapWorker)
+    worker.done = Mock() # `done` is implemented by `AsyncWorkerProxy`
     state = {}
 
     messages_in_folder = {}
@@ -61,7 +62,7 @@ def mock_worker(**folders):
 
     worker.message_in_folder = messages_in_folder
 
-    with patch('tinymail.account.get_worker', Mock(return_value=worker)):
+    with patch('tinymail.account._new_imap_worker', Mock(return_value=worker)):
         yield worker
 
 class AsyncTestCase(unittest2.TestCase):
