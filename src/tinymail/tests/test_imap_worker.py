@@ -91,7 +91,7 @@ class ImapWorkerTest(unittest.TestCase):
         header_by_index = worker.get_message_headers([1, 2, 5])
 
         imap_conn.fetch.assert_called_once_with('1,2,5',
-                                                '(BODY.PEEK[HEADER] FLAGS)')
+                                                '(FLAGS BODY.PEEK[HEADER])')
         self.assertEqual(header_by_index, {1: hdr, 2: hdr, 5: hdr})
 
     def test_get_message_body(self):
