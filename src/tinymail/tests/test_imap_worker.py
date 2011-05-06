@@ -115,3 +115,19 @@ class ImapWorkerTest(unittest.TestCase):
 
         imap_conn.fetch.assert_called_once_with('5', '(RFC822)')
         self.assertEqual(message_body, 'ZE BODY')
+
+    def test_add_flag(self):
+        worker, imap_conn = self._worker_with_fake_imap()
+        imap_conn.store.return_value = ('OK', [])
+
+        worker.change_flag([1, 2, 5], 'add', '\\Seen')
+
+        imap_conn.store.assert_called_once_with('1,2,5', '+FLAGS', '\\Seen')
+
+    def test_remove_flag(self):
+        worker, imap_conn = self._worker_with_fake_imap()
+        imap_conn.store.return_value = ('OK', [])
+
+        worker.change_flag([1, 2, 5], 'del', '\\Flagged')
+
+        imap_conn.store.assert_called_once_with('1,2,5', '-FLAGS', '\\Flagged')
