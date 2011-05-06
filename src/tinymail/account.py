@@ -78,6 +78,9 @@ class Folder(object):
     def get_message(self, uid):
         return self._messages[uid]
 
+    def change_flag(self, uid_list, operation, flag):
+        FolderChangeFlagJob(self, uid_list, operation, flag).start()
+
 class Message(object):
     def __init__(self, folder, uid, flags, raw_headers):
         self.folder = folder
@@ -258,3 +261,46 @@ class MessageLoadFullJob(AsyncJob):
         message_updated.send(message)
 
         self.message._load_job = None
+
+class FolderChangeFlagJob(AsyncJob):
+    def __init__(self, folder, uid_list, operation, flag):
+        self.folder = folder
+        self.uid_list = uid_list
+        self.operation = operation
+        self.flag = flag
+
+    @_o
+    def do_stuff(self):
+        wm = self.folder.account.worker_manager
+        worker = yield wm.get_worker()
+
+        try:
+            yield self.change_messages_flag(worker)
+
+        finally:
+            yield wm.hand_back_worker(worker)
+
+    @_o
+    def change_messages_flag(self, worker):
+        log.debug("Changing flags in folder %r, messages %r: %r %r",
+                  self.folder, self.uid_list, self.operation, self.flag)
+
+        mbox_status, message_data = yield worker.get_messages_in_folder(
+                self.folder.name, readonly=False)
+        indices = [message_data[uid]['index'] for uid in self.uid_list]
+
+        yield worker.change_flag(indices, self.operation, self.flag)
+
+        db = self.folder.account._db
+        with db.transaction():
+            db_account = db.get_account('the-account')
+            db_folder = db_account.get_folder(self.folder.name)
+            for uid in self.uid_list:
+                message = self.folder._messages[uid]
+                if self.operation == 'add':
+                    message.flags.add(self.flag)
+                elif self.operation == 'del':
+                    message.flags.discard(self.flag)
+                else:
+                    raise ValueError('Unknown operation %r' % self.operation)
+                db_folder.set_message_flags(uid, message.flags)

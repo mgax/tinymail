@@ -109,7 +109,7 @@ class AccountUpdateTest(unittest.TestCase):
 
         with mock_worker(fol1={6: None, 8: None, 13: None}) as worker:
             account.perform_update()
-            _index = worker.message_in_folder['fol1'][13]['index']
+            _index = worker.messages_in_folder['fol1'][13]['index']
             worker.get_message_headers.assert_called_once_with(set([_index]))
 
     def test_empty_folder(self):
@@ -297,3 +297,51 @@ class PersistenceTest(unittest.TestCase):
         fol1 = account2.get_folder('fol1')
         self.assertEqual([m.flags for m in fol1.list_messages()],
                          [set(['\\Flagged'])])
+
+class ModifyFlagsTest(unittest.TestCase):
+    def setUp(self):
+        self.db = mock_db()
+        self.account = _account_for_test(db=self.db)
+        self.imap_data = {'fol1': {
+            4: (4, set([r'\Seen']), "Subject: test message"),
+            15: (15, set([r'\Flagged']), "Subject: whatever"),
+            22: (22, set([r'\Seen', r'\Answered']), "Subject: blah"),
+        }}
+        with mock_worker(**self.imap_data):
+            self.account.perform_update()
+
+    def test_add_flag(self):
+        fol1 = self.account.get_folder('fol1')
+        with mock_worker(**self.imap_data) as worker:
+            fol1.change_flag([4, 15], 'add', '\\Seen')
+
+        idx = lambda uid: worker.messages_in_folder['fol1'][uid]['index']
+        worker.change_flag.assert_called_once_with(
+                [idx(4), idx(15)], 'add', '\\Seen')
+
+        self.assertEqual(fol1.get_message(4).flags, set(['\\Seen']))
+        self.assertEqual(fol1.get_message(15).flags,
+                         set(['\\Seen', '\\Flagged']))
+
+        accountB = _account_for_test(db=self.db)
+        fol1B = accountB.get_folder('fol1')
+        self.assertEqual(fol1B.get_message(4).flags, set(['\\Seen']))
+        self.assertEqual(fol1B.get_message(15).flags,
+                         set(['\\Seen', '\\Flagged']))
+
+    def test_del_flag(self):
+        fol1 = self.account.get_folder('fol1')
+        with mock_worker(**self.imap_data) as worker:
+            fol1.change_flag([4, 15], 'del', '\\Seen')
+
+        idx = lambda uid: worker.messages_in_folder['fol1'][uid]['index']
+        worker.change_flag.assert_called_once_with(
+                [idx(4), idx(15)], 'del', '\\Seen')
+
+        self.assertEqual(fol1.get_message(4).flags, set())
+        self.assertEqual(fol1.get_message(15).flags, set(['\\Flagged']))
+
+        accountB = _account_for_test(db=self.db)
+        fol1B = accountB.get_folder('fol1')
+        self.assertEqual(fol1B.get_message(4).flags, set())
+        self.assertEqual(fol1B.get_message(15).flags, set(['\\Flagged']))
