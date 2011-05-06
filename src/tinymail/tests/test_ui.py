@@ -139,3 +139,5 @@ class MessageListingTest(AsyncTestCase):
         self.assertEqual(caught_signals, [
             (folder_controller, {'message': fol1.get_message(8)}),
         ])
+        self.assertEqual(list(folder_controller.get_selected_messages()),
+                         [fol1.get_message(8)])

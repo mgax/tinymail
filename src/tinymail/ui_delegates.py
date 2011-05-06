@@ -140,6 +140,13 @@ class FolderController(NSObject):
         if self.table_view is not None:
             self.table_view.reloadData()
 
+    def get_selected_messages(self):
+        selected = self.table_view.selectedRowIndexes()
+        # TODO there has to be a better way to get selected messages
+        for idx in xrange(len(self.messages)):
+            if selected.containsIndex_(idx):
+                yield self.messages[idx]
+
     def numberOfRowsInTableView_(self, table_view):
         return len(self.messages)
 
