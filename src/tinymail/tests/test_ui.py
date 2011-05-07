@@ -100,53 +100,47 @@ class AccountControllerTest(AsyncTestCase):
         ])
 
 class MessageListingTest(AsyncTestCase):
+
+    def setUp(self):
+        self.imap_data = {'fol1': {
+            6: (6, [r'\Seen'], "From: me\nSubject: test message"),
+            8: (8, [r'\Seen'], "From: her\nSubject: another test message"),
+        }}
+        self.account = account_with_folders(**self.imap_data)
+        fol1 = self.account.get_folder('fol1')
+        self.messages_pane = setup_folder_controller(fol1)
+
     def tearDown(self):
         cleanup_ui(get_app_delegate())
 
     def test_show_messages(self):
-        msg6 = (6, [r'\Seen'], "From: me\nSubject: test message")
-        msg8 = (8, [r'\Seen'], "From: her\nSubject: another test message")
-        account = account_with_folders(fol1={6: msg6, 8: msg8})
-        messages_pane = setup_folder_controller(account.get_folder('fol1'))
-
-        sender1 = messages_pane.preparedCellAtColumn_row_(0, 0)
-        subject1 = messages_pane.preparedCellAtColumn_row_(1, 0)
+        sender1 = self.messages_pane.preparedCellAtColumn_row_(0, 0)
+        subject1 = self.messages_pane.preparedCellAtColumn_row_(1, 0)
         self.assertEqual(sender1.objectValue(), "me")
         self.assertEqual(subject1.objectValue(), "test message")
 
-        sender2 = messages_pane.preparedCellAtColumn_row_(0, 1)
-        subject2 = messages_pane.preparedCellAtColumn_row_(1, 1)
+        sender2 = self.messages_pane.preparedCellAtColumn_row_(0, 1)
+        subject2 = self.messages_pane.preparedCellAtColumn_row_(1, 1)
         self.assertEqual(sender2.objectValue(), "her")
         self.assertEqual(subject2.objectValue(), "another test message")
 
     def test_update_messages(self):
-        msg6 = (6, [r'\Seen'], "From: me\nSubject: test message")
-        msg8 = (8, [r'\Seen'], "From: her\nSubject: another test message")
-        account = account_with_folders(fol1={})
-        messages_pane = setup_folder_controller(account.get_folder('fol1'))
+        self.imap_data['fol1'][12] = (12, [], "From: other\nSubject: hi")
+        with mock_worker(**self.imap_data):
+            self.account.perform_update()
 
-        with mock_worker(fol1={6: msg6, 8: msg8}):
-            account.perform_update()
-
-        subject1 = messages_pane.preparedCellAtColumn_row_(1, 0)
-        self.assertEqual(subject1.objectValue(), "test message")
-
-        subject2 = messages_pane.preparedCellAtColumn_row_(1, 1)
-        self.assertEqual(subject2.objectValue(), "another test message")
+        subject1 = self.messages_pane.preparedCellAtColumn_row_(1, 2)
+        self.assertEqual(subject1.objectValue(), "hi")
 
     def test_select_message(self):
         from tinymail.ui_delegates import message_selected
-        msg6 = (6, [r'\Seen'], "From: me\nSubject: test message")
-        msg8 = (8, [r'\Seen'], "From: her\nSubject: another test message")
-        account = account_with_folders(fol1={6: msg6, 8: msg8})
-        fol1 = account.get_folder('fol1')
-        messages_pane = setup_folder_controller(account.get_folder('fol1'))
-        folder_controller = messages_pane.delegate()
 
         with listen_for(message_selected) as caught_signals:
-            rows = objc_index_set([1])
-            messages_pane.selectRowIndexes_byExtendingSelection_(rows, False)
+            self.messages_pane.selectRowIndexes_byExtendingSelection_(
+                    objc_index_set([1]), False)
 
+        fol1 = self.account.get_folder('fol1')
+        folder_controller = self.messages_pane.delegate()
         self.assertEqual(caught_signals, [
             (folder_controller, {'message': fol1.get_message(8)}),
         ])
