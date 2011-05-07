@@ -1,4 +1,5 @@
 import unittest2 as unittest
+from mock import Mock
 from monocle import _o
 from helpers import mock_db, listen_for, mock_worker, AsyncTestCase
 
@@ -98,7 +99,7 @@ class MessageListingTest(AsyncTestCase):
 
     def setUp(self):
         self.imap_data = {'fol1': {
-            6: (6, [r'\Seen'], "From: me\nSubject: test message"),
+            6: (6, [r'\Seen', r'\Flagged'], "From: me\nSubject: test message"),
             8: (8, [r'\Seen'], "From: her\nSubject: another test message"),
         }}
         self.account = account_with_folders(**self.imap_data)
@@ -141,3 +142,29 @@ class MessageListingTest(AsyncTestCase):
         ])
         self.assertEqual(list(folder_controller.get_selected_messages()),
                          [fol1.get_message(8)])
+
+    def test_flag_messages(self):
+        fol1 = self.account.get_folder('fol1')
+        fol1.change_flag = Mock()
+        self.messages_pane.selectRowIndexes_byExtendingSelection_(
+                objc_index_set([0, 1]), False)
+        folder_controller = self.messages_pane.delegate()
+
+        folder_controller.toggle_flagged_selected()
+
+        fol1.change_flag.assert_called_once_with([8], 'add', '\\Flagged')
+
+    def test_unflag_messages(self):
+        self.imap_data['fol1'][12] = (12, ['\\Flagged'],
+                                      "From: other\nSubject: hi")
+        with mock_worker(**self.imap_data):
+            self.account.perform_update()
+        fol1 = self.account.get_folder('fol1')
+        fol1.change_flag = Mock()
+        self.messages_pane.selectRowIndexes_byExtendingSelection_(
+                objc_index_set([0, 2]), False)
+        folder_controller = self.messages_pane.delegate()
+
+        folder_controller.toggle_flagged_selected()
+
+        fol1.change_flag.assert_called_once_with([6, 12], 'del', '\\Flagged')
