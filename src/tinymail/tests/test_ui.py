@@ -59,44 +59,39 @@ def account_with_folders(**folders):
     return account
 
 class AccountControllerTest(AsyncTestCase):
+
+    def setUp(self):
+        from tinymail.ui_delegates import AccountController
+        self.imap_data = {'fol1': {}, 'fol2': {}}
+        self.account = account_with_folders(**self.imap_data)
+        self.folders_pane = setup_account_controller(self.account)
+
     def tearDown(self):
         cleanup_ui(get_app_delegate())
 
     def test_show_folders(self):
-        from tinymail.ui_delegates import AccountController
-        account = account_with_folders(fol1={6: None, 8: None}, fol2={})
-        folders_pane = setup_account_controller(account)
-
-        cell1 = folders_pane.preparedCellAtColumn_row_(0, 0)
+        cell1 = self.folders_pane.preparedCellAtColumn_row_(0, 0)
         self.assertEqual(cell1.objectValue(), 'fol1')
-        cell2 = folders_pane.preparedCellAtColumn_row_(0, 1)
+        cell2 = self.folders_pane.preparedCellAtColumn_row_(0, 1)
         self.assertEqual(cell2.objectValue(), 'fol2')
 
     def test_folders_updated(self):
-        from tinymail.ui_delegates import AccountController
-        account = account_with_folders()
-        folders_pane = setup_account_controller(account)
+        self.imap_data['fol3'] = {}
+        with mock_worker(**self.imap_data):
+            self.account.perform_update()
 
-        with mock_worker(fol2={}, fol3={}):
-            account.perform_update()
-
-        cell1 = folders_pane.preparedCellAtColumn_row_(0, 0)
-        self.assertEqual(cell1.objectValue(), 'fol2')
-        cell2 = folders_pane.preparedCellAtColumn_row_(0, 1)
-        self.assertEqual(cell2.objectValue(), 'fol3')
+        cell1 = self.folders_pane.preparedCellAtColumn_row_(0, 2)
+        self.assertEqual(cell1.objectValue(), 'fol3')
 
     def test_select_folder(self):
-        from tinymail.ui_delegates import AccountController, folder_selected
-        account = account_with_folders(fol1={6: None, 8: None}, fol2={})
-        folders_pane = setup_account_controller(account)
-        account_controller = folders_pane.delegate()
-
+        from tinymail.ui_delegates import folder_selected
         with listen_for(folder_selected) as caught_signals:
-            rows = objc_index_set([1])
-            folders_pane.selectRowIndexes_byExtendingSelection_(rows, False)
+            self.folders_pane.selectRowIndexes_byExtendingSelection_(
+                    objc_index_set([1]), False)
 
+        account_controller = self.folders_pane.delegate()
         self.assertEqual(caught_signals, [
-            (account_controller, {'folder': account.get_folder('fol2')}),
+            (account_controller, {'folder': self.account.get_folder('fol2')}),
         ])
 
 class MessageListingTest(AsyncTestCase):
