@@ -188,8 +188,8 @@ class AccountUpdateJob(AsyncJob):
             index_to_uuid[index] = uid
 
         if new_indices:
+            headers_by_index = yield worker.get_message_headers(new_indices)
             with db.transaction():
-                headers_by_index = yield worker.get_message_headers(new_indices)
                 sql_msgs = []
                 for index, raw_headers in headers_by_index.iteritems():
                     uid = index_to_uuid[index]
