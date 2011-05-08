@@ -374,7 +374,10 @@ class TinymailAppDelegate(NSObject):
         account_opened.connect(handle_account_opened, weak=False)
 
         def handle_folder_selected(sender, folder):
-            fc = FolderController.controllerWithFolder_(folder)
+            if folder is None:
+                fc = FolderController.newBlank()
+            else:
+                fc = FolderController.controllerWithFolder_(folder)
             self.setFolderController_(fc)
         folder_selected.connect(handle_folder_selected, weak=False)
 
