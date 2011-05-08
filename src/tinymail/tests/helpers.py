@@ -60,6 +60,7 @@ def mock_worker(**folders):
     worker.get_message_headers.side_effect = get_message_headers
 
     worker.change_flag.return_value = defer(None)
+    worker.close_mailbox.return_value = defer(None)
     worker.disconnect.return_value = defer(None)
 
     with patch('tinymail.account._new_imap_worker', Mock(return_value=worker)):

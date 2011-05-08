@@ -220,6 +220,9 @@ class AccountUpdateJob(AsyncJob):
                  folder.name, len(message_data),
                  len(new_message_ids), len(removed_message_ids), flags_changed)
 
+        yield worker.close_mailbox()
+
+
 class MessageLoadFullJob(AsyncJob):
     def __init__(self, message):
         self.message = message
@@ -250,6 +253,9 @@ class MessageLoadFullJob(AsyncJob):
         message_updated.send(message)
 
         self.message._load_job = None
+
+        yield worker.close_mailbox()
+
 
 class FolderChangeFlagJob(AsyncJob):
     def __init__(self, folder, uid_list, operation, flag):
@@ -299,3 +305,5 @@ class FolderChangeFlagJob(AsyncJob):
             'flags_changed': self.uid_list,
         }
         folder_updated.send(self.folder, **event_data)
+
+        yield worker.close_mailbox()

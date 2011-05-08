@@ -128,11 +128,13 @@ class AccountUpdateTest(unittest.TestCase):
             account.perform_update()
             message = account.get_folder('fol1')._messages[6]
             worker.get_message_body.return_value = defer(mime_message)
+            worker.close_mailbox.reset_mock()
             with listen_for(message_updated) as caught_signals:
                 message.load_full()
 
         self.assertEqual(message.raw_full, mime_message)
         self.assertEqual(caught_signals, [(message, {})])
+        worker.close_mailbox.assert_called_once_with()
 
     def test_folder_removed_on_server(self):
         account = _account_for_test()
@@ -190,6 +192,15 @@ class AccountUpdateTest(unittest.TestCase):
                          [set(['\\Flagged'])])
         event_data = {'added': [], 'removed': [], 'flags_changed': [13]}
         self.assertEqual(caught_signals, [(fol1, event_data)])
+
+    def test_close_mailbox_after_update(self):
+        account = _account_for_test()
+
+        with mock_worker(fol1={}) as worker:
+            account.perform_update()
+
+        worker.close_mailbox.assert_called_once_with()
+
 
 class PersistenceTest(unittest.TestCase):
     def test_folders(self):
@@ -297,6 +308,7 @@ class PersistenceTest(unittest.TestCase):
         self.assertEqual([m.flags for m in fol1.list_messages()],
                          [set(['\\Flagged'])])
 
+
 class ModifyFlagsTest(unittest.TestCase):
     def setUp(self):
         self.db = mock_db()
@@ -352,3 +364,12 @@ class ModifyFlagsTest(unittest.TestCase):
         fol1B = accountB.get_folder('fol1')
         self.assertEqual(fol1B.get_message(4).flags, set())
         self.assertEqual(fol1B.get_message(15).flags, set(['\\Flagged']))
+
+    def test_close_mailbox_after_changing_flags(self):
+        account = _account_for_test()
+        msg13_data = (13, set([r'\Seen']), "Subject: test message")
+        with mock_worker(fol1={13: msg13_data}) as worker:
+            account.perform_update()
+            worker.close_mailbox.reset_mock()
+            account.get_folder('fol1').change_flag([13], 'add', '\\Flagged')
+            worker.close_mailbox.assert_called_once_with()
