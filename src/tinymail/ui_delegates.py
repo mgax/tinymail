@@ -390,7 +390,7 @@ class TinymailAppDelegate(NSObject):
 
     @objc.IBAction
     def markReadUnread_(self, sender):
-        print 'unread'
+        self.controllers['folder'].selected_toggle_flag('\\Seen')
 
     @objc.IBAction
     def markFlaggedUnflagged_(self, sender):
