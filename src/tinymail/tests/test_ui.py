@@ -28,10 +28,8 @@ def sleep(delay):
 
 def setup_account_controller(account):
     from tinymail.ui_delegates import MailboxesAccountItem
-    folders_pane = get_app_delegate().foldersPane
     account_controller = MailboxesAccountItem.newWithAccount_(account)
     get_app_delegate().setMailboxesAccountController_(account_controller)
-    return folders_pane
 
 def setup_folder_controller(folder):
     from tinymail.ui_delegates import FolderController
@@ -40,11 +38,6 @@ def setup_folder_controller(folder):
     folder_controller = FolderController.controllerWithFolder_(folder)
     app_delegate.setFolderController_(folder_controller)
     return messages_pane
-
-def cleanup_ui(app_delegate):
-    from tinymail.account import Folder
-    setup_account_controller(_account_for_test())
-    setup_folder_controller(Folder(None, 'f'))
 
 def objc_index_set(values):
     from Foundation import NSMutableIndexSet
@@ -64,10 +57,12 @@ class MailboxesControllerTest(AsyncTestCase):
     def setUp(self):
         self.imap_data = {'fol1': {}, 'fol2': {}}
         self.account = account_with_folders(**self.imap_data)
-        self.folders_pane = setup_account_controller(self.account)
+        setup_account_controller(self.account)
+        self.folders_pane = get_app_delegate().foldersPane
 
     def tearDown(self):
-        cleanup_ui(get_app_delegate())
+        setup_account_controller(_account_for_test())
+        from tinymail.account import Folder
 
     def test_show_folders(self):
         cell1 = self.folders_pane.preparedCellAtColumn_row_(0, 0)
@@ -106,7 +101,8 @@ class MessageListingTest(AsyncTestCase):
         self.messages_pane = setup_folder_controller(fol1)
 
     def tearDown(self):
-        cleanup_ui(get_app_delegate())
+        from tinymail.account import Folder
+        setup_folder_controller(Folder(None, 'f'))
 
     def test_show_messages(self):
         sender1 = self.messages_pane.preparedCellAtColumn_row_(0, 0)
