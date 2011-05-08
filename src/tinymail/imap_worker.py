@@ -78,14 +78,15 @@ class ImapWorker(object):
 
         return paths
 
-    def get_messages_in_folder(self, folder_name):
+    def get_messages_in_folder(self, folder_name, readonly=True):
         """
         Select folder `folder_name`; return folder status + message flags.
         """
 
         log.debug("get_messages_in_folder %r", folder_name)
 
-        count = self.conn.select(folder_name.encode('ascii'), readonly=True)
+        count = self.conn.select(folder_name.encode('ascii'),
+                                 readonly=readonly)
         data = self.conn.status(folder_name.encode('ascii'),
                                 '(MESSAGES UIDNEXT UIDVALIDITY)')
 

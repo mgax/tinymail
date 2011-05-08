@@ -76,6 +76,18 @@ class ImapWorkerTest(unittest.TestCase):
             13: {'index': 3, 'flags': set()},
         })
 
+    def test_open_mailbox_for_writing(self):
+        worker, imap_conn = self._worker_with_fake_imap()
+        imap_conn.select.return_value = ('OK', [])
+        imap_conn.status.return_value = ('OK', [
+            '"fol1" (MESSAGES 1 RECENT 1 UIDNEXT 14 '
+                    'UIDVALIDITY 1300189203 UNSEEN 0)'])
+        imap_conn.fetch.return_value = ('OK', ['1 (UID 6 FLAGS (\\Seen))'])
+
+        worker.get_messages_in_folder('fol1', readonly=False)
+
+        imap_conn.select.assert_called_once_with('fol1', readonly=False)
+
     def test_get_message_headers(self):
         worker, imap_conn = self._worker_with_fake_imap()
         hdr = ('From: somebody@example.com\r\n'
