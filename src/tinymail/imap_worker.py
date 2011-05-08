@@ -161,3 +161,8 @@ class ImapWorker(object):
         msgs = ','.join(map(str, message_indices))
         data = self.conn.store(msgs, OP_MAP[operation], flag)
         # TODO "data" tells us the new flags for all messages
+
+    def close_mailbox(self):
+        log.debug("close_mailbox")
+
+        data = self.conn.close()

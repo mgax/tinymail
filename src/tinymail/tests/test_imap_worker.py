@@ -135,3 +135,11 @@ class ImapWorkerTest(unittest.TestCase):
         worker.change_flag([31, 32, 35], 'del', '\\Flagged')
 
         imap_conn.store.assert_called_once_with('1,2,5', '-FLAGS', '\\Flagged')
+
+    def test_close(self):
+        worker, imap_conn = self._worker_with_fake_imap()
+        imap_conn.close.return_value = ('OK', [])
+
+        worker.close_mailbox()
+
+        imap_conn.close.assert_called_once_with()
