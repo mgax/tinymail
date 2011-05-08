@@ -249,13 +249,10 @@ class MessageLoadFullJob(AsyncJob):
         log.debug("Loading full message %r in folder %r",
                  message.uid, message.folder.name)
 
-        mbox_status, message_data = yield worker.get_messages_in_folder(message.folder.name)
-        uuid_to_index = {}
-        for uid, msg_info in message_data.iteritems():
-            index = msg_info['index']
-            uuid_to_index[uid] = index
+        # we must open the mailbox
+        yield worker.get_messages_in_folder(message.folder.name)
 
-        body = yield worker.get_message_body(uuid_to_index[message.uid])
+        body = yield worker.get_message_body(message.uid)
         message.raw_full = body
 
         message_updated.send(message)

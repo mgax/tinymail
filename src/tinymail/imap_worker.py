@@ -85,6 +85,8 @@ class ImapWorker(object):
 
         log.debug("get_messages_in_folder %r", folder_name)
 
+        self.message_index = {}
+
         count = self.conn.select(folder_name.encode('ascii'),
                                  readonly=readonly)
         data = self.conn.status(folder_name.encode('ascii'),
@@ -107,6 +109,7 @@ class ImapWorker(object):
                     'flags': set(m.group('flags').split()),
                     'index': index,
                 }
+                self.message_index[uid] = index
 
         return mbox_status, message_data
 
@@ -136,10 +139,10 @@ class ImapWorker(object):
 
         return headers_by_index
 
-    def get_message_body(self, message_index):
-        log.debug("get_message_body for %r", message_index)
+    def get_message_body(self, uid):
+        log.debug("get_message_body for %r", uid)
 
-        data = self.conn.fetch(str(message_index), '(RFC822)')
+        data = self.conn.fetch(str(self.message_index[uid]), '(RFC822)')
         assert len(data) == 2 and data[1] == ')'
         assert isinstance(data[0], tuple) and len(data[0]) == 2
         return data[0][1]

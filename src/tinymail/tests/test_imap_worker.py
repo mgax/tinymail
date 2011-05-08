@@ -108,10 +108,11 @@ class ImapWorkerTest(unittest.TestCase):
 
     def test_get_message_body(self):
         worker, imap_conn = self._worker_with_fake_imap()
+        worker.message_index = {22: 5}
         response_data = [('5 (RFC822 {7}', 'ZE BODY'), ')']
         imap_conn.fetch.return_value = ('OK', response_data)
 
-        message_body = worker.get_message_body(5)
+        message_body = worker.get_message_body(22)
 
         imap_conn.fetch.assert_called_once_with('5', '(RFC822)')
         self.assertEqual(message_body, 'ZE BODY')
