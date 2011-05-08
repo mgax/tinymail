@@ -150,7 +150,7 @@ class MessageListingTest(AsyncTestCase):
                 objc_index_set([0, 1]), False)
         folder_controller = self.messages_pane.delegate()
 
-        folder_controller.toggle_flagged_selected()
+        folder_controller.selected_toggle_flag('\\Flagged')
 
         fol1.change_flag.assert_called_once_with([8], 'add', '\\Flagged')
 
@@ -165,6 +165,6 @@ class MessageListingTest(AsyncTestCase):
                 objc_index_set([0, 2]), False)
         folder_controller = self.messages_pane.delegate()
 
-        folder_controller.toggle_flagged_selected()
+        folder_controller.selected_toggle_flag('\\Flagged')
 
         fol1.change_flag.assert_called_once_with([6, 12], 'del', '\\Flagged')

@@ -148,19 +148,19 @@ class FolderController(NSObject):
             if selected.containsIndex_(idx):
                 yield self.messages[idx]
 
-    def toggle_flagged_selected(self):
+    def selected_toggle_flag(self, flag):
         flagged = []
         unflagged = []
         for message in self.get_selected_messages():
-            if '\\Flagged' in message.flags:
+            if flag in message.flags:
                 flagged.append(message.uid)
             else:
                 unflagged.append(message.uid)
 
         if unflagged:
-            self.folder.change_flag(unflagged, 'add', '\\Flagged')
+            self.folder.change_flag(unflagged, 'add', flag)
         else:
-            self.folder.change_flag(flagged, 'del', '\\Flagged')
+            self.folder.change_flag(flagged, 'del', flag)
 
     def numberOfRowsInTableView_(self, table_view):
         return len(self.messages)
@@ -394,7 +394,7 @@ class TinymailAppDelegate(NSObject):
 
     @objc.IBAction
     def markFlaggedUnflagged_(self, sender):
-        self.controllers['folder'].toggle_flagged_selected()
+        self.controllers['folder'].selected_toggle_flag('\\Flagged')
 
 class Configuration(object):
     def __init__(self, home):
