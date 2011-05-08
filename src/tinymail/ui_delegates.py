@@ -4,6 +4,7 @@ import logging
 import email
 import objc
 from Foundation import NSObject, NSURL, NSString, NSISOLatin1StringEncoding
+from Foundation import NSIndexSet
 import AppKit
 from PyObjCTools import Debugging
 from blinker import Signal
@@ -177,6 +178,8 @@ class FolderController(NSObject):
         if table_view is None:
             return
 
+        table_view.selectRowIndexes_byExtendingSelection_(
+                NSIndexSet.new(), False)
         table_view.setDelegate_(self)
         table_view.setDataSource_(self)
         table_view.reloadData()
