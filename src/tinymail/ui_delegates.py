@@ -31,11 +31,49 @@ def objc_callback(func):
 
     return wrapper
 
+
+class MailboxesController(NSObject):
+    def init(self):
+        self = super(MailboxesController, self).init()
+        self.account_items = []
+        self.outline_view = None
+        return self
+
+    def setView_(self, outline_view):
+        self.outline_view = outline_view
+        if outline_view is None:
+            return
+
+    def update_view(self, sender=None):
+        if self.outline_view is not None:
+            self.outline_view.reloadData()
+
+    def add_account(self, account):
+        ac = MailboxesAccountItem.newWithAccount_(account)
+        ac.updated.connect(self.update_view, weak=False)
+        self.account_items.append(ac)
+        self.outline_view.setDataSource_(ac)
+        self.outline_view.setDelegate_(ac)
+        self.update_view()
+
+    def remove_account(self, account):
+        for ac in self.account_items:
+            if ac.account is account:
+                break
+        else:
+            raise ValueError("Unknown account %r %r" %
+                             (account, self.account_items))
+        self.outline_view.setDataSource_(None)
+        self.outline_view.setDelegate_(None)
+        self.account_items.remove(ac)
+        self.update_view()
+
+
 class MailboxesAccountItem(NSObject):
     def init(self):
         self = super(MailboxesAccountItem, self).init()
         self.folder_items = []
-        self.outline_view = None
+        self.updated = Signal()
         return self
 
     @classmethod
@@ -45,26 +83,16 @@ class MailboxesAccountItem(NSObject):
     @classmethod
     def newWithAccount_(cls, account):
         self = cls.alloc().init()
+        self.account = account
         account_updated.connect(objc_callback(self.folders_updated), account)
         self.folders_updated(account)
         return self
-
-    def setView_(self, outline_view):
-        self.outline_view = outline_view
-        if outline_view is None:
-            return
-
-        outline_view.setDataSource_(self)
-        outline_view.setDelegate_(self)
-
-        outline_view.reloadData()
 
     def folders_updated(self, account):
         self.folder_items[:] = [MailboxesFolderItem.newWithFolder_(f)
                                 for n, f in sorted(account._folders.items())]
 
-        if self.outline_view is not None:
-            self.outline_view.reloadData()
+        self.updated.send(self)
 
     def outlineView_numberOfChildrenOfItem_(self, outline_view, item):
         assert item is None
@@ -317,17 +345,12 @@ class TinymailAppDelegate(NSObject):
     def init(self):
         self = super(TinymailAppDelegate, self).init()
         self.controllers = { # because we have ownership of the controllers
-            'account': MailboxesAccountItem.newBlank(),
+            'mailboxes': MailboxesController.alloc().init(),
             'folder': FolderController.newBlank(),
             'message': MessageController.newBlank(),
         }
         self.accounts = {}
         return self
-
-    def setMailboxesAccountController_(self, ac):
-        self.controllers['account'].setView_(None)
-        self.controllers['account'] = ac
-        self.controllers['account'].setView_(self.foldersPane)
 
     def setFolderController_(self, fc):
         self.controllers['folder'].setView_(None)
@@ -368,9 +391,10 @@ class TinymailAppDelegate(NSObject):
             self.the_db.close()
 
     def set_up_ui(self):
+        self.controllers['mailboxes'].setView_(self.foldersPane)
+
         def handle_account_opened(account):
-            ac = MailboxesAccountItem.newWithAccount_(account)
-            self.setMailboxesAccountController_(ac)
+            self.controllers['mailboxes'].add_account(account)
         account_opened.connect(handle_account_opened, weak=False)
 
         def handle_folder_selected(sender, folder):
@@ -422,6 +446,7 @@ def develop():
         del sys.argv[1]
 
         def run_nose_tests(self, notif):
+            self.controllers['mailboxes'].setView_(self.foldersPane)
             from tinymail import runtests
             app = notif.object()
             cb = runtests.main_o()

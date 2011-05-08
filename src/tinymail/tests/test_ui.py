@@ -26,11 +26,6 @@ def sleep(delay):
     AppHelper.callLater(delay, cb, None)
     return cb
 
-def setup_account_controller(account):
-    from tinymail.ui_delegates import MailboxesAccountItem
-    account_controller = MailboxesAccountItem.newWithAccount_(account)
-    get_app_delegate().setMailboxesAccountController_(account_controller)
-
 def setup_folder_controller(folder):
     from tinymail.ui_delegates import FolderController
     app_delegate = get_app_delegate()
@@ -57,11 +52,11 @@ class MailboxesControllerTest(AsyncTestCase):
     def setUp(self):
         self.imap_data = {'fol1': {}, 'fol2': {}}
         self.account = account_with_folders(**self.imap_data)
-        setup_account_controller(self.account)
+        get_app_delegate().controllers['mailboxes'].add_account(self.account)
         self.folders_pane = get_app_delegate().foldersPane
 
     def tearDown(self):
-        setup_account_controller(_account_for_test())
+        get_app_delegate().controllers['mailboxes'].remove_account(self.account)
         from tinymail.account import Folder
 
     def test_show_folders(self):
