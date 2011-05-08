@@ -321,9 +321,7 @@ class ModifyFlagsTest(unittest.TestCase):
         event_data = {'added': [], 'removed': [], 'flags_changed': [4, 15]}
         self.assertEqual(caught_signals, [(fol1, event_data)])
 
-        idx = lambda uid: worker.messages_in_folder['fol1'][uid]['index']
-        worker.change_flag.assert_called_once_with(
-                [idx(4), idx(15)], 'add', '\\Seen')
+        worker.change_flag.assert_called_once_with([4, 15], 'add', '\\Seen')
 
         self.assertEqual(fol1.get_message(4).flags, set(['\\Seen']))
         self.assertEqual(fol1.get_message(15).flags,
@@ -346,9 +344,7 @@ class ModifyFlagsTest(unittest.TestCase):
         event_data = {'added': [], 'removed': [], 'flags_changed': [4, 15]}
         self.assertEqual(caught_signals, [(fol1, event_data)])
 
-        idx = lambda uid: worker.messages_in_folder['fol1'][uid]['index']
-        worker.change_flag.assert_called_once_with(
-                [idx(4), idx(15)], 'del', '\\Seen')
+        worker.change_flag.assert_called_once_with([4, 15], 'del', '\\Seen')
 
         self.assertEqual(fol1.get_message(4).flags, set())
         self.assertEqual(fol1.get_message(15).flags, set(['\\Flagged']))

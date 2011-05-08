@@ -119,16 +119,18 @@ class ImapWorkerTest(unittest.TestCase):
 
     def test_add_flag(self):
         worker, imap_conn = self._worker_with_fake_imap()
+        worker.message_index = {31: 1, 32: 2, 35: 5}
         imap_conn.store.return_value = ('OK', [])
 
-        worker.change_flag([1, 2, 5], 'add', '\\Seen')
+        worker.change_flag([31, 32, 35], 'add', '\\Seen')
 
         imap_conn.store.assert_called_once_with('1,2,5', '+FLAGS', '\\Seen')
 
     def test_remove_flag(self):
         worker, imap_conn = self._worker_with_fake_imap()
+        worker.message_index = {31: 1, 32: 2, 35: 5}
         imap_conn.store.return_value = ('OK', [])
 
-        worker.change_flag([1, 2, 5], 'del', '\\Flagged')
+        worker.change_flag([31, 32, 35], 'del', '\\Flagged')
 
         imap_conn.store.assert_called_once_with('1,2,5', '-FLAGS', '\\Flagged')

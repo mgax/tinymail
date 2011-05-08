@@ -282,11 +282,10 @@ class FolderChangeFlagJob(AsyncJob):
         log.debug("Changing flags in folder %r, messages %r: %r %r",
                   self.folder, self.uid_list, self.operation, self.flag)
 
-        mbox_status, message_data = yield worker.get_messages_in_folder(
-                self.folder.name, readonly=False)
-        indices = [message_data[uid]['index'] for uid in self.uid_list]
+        # we must open the mailbox
+        yield worker.get_messages_in_folder(self.folder.name, readonly=False)
 
-        yield worker.change_flag(indices, self.operation, self.flag)
+        yield worker.change_flag(self.uid_list, self.operation, self.flag)
 
         db = self.folder.account._db
         with db.transaction():

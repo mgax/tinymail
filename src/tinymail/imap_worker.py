@@ -147,11 +147,13 @@ class ImapWorker(object):
         assert isinstance(data[0], tuple) and len(data[0]) == 2
         return data[0][1]
 
-    def change_flag(self, message_indices, operation, flag):
-        log.debug("change_flag %r %r %r", message_indices, operation, flag)
+    def change_flag(self, uid_list, operation, flag):
+        log.debug("change_flag %r %r %r", uid_list, operation, flag)
 
         OP_MAP = {'add': '+FLAGS',
                   'del': '-FLAGS'}
+        message_indices = [self.message_index[uid] for uid in uid_list]
+        message_indices.sort()
         msgs = ','.join(map(str, message_indices))
         data = self.conn.store(msgs, OP_MAP[operation], flag)
         # TODO "data" tells us the new flags for all messages
