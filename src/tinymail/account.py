@@ -304,3 +304,10 @@ class FolderChangeFlagJob(AsyncJob):
                 else:
                     raise ValueError('Unknown operation %r' % self.operation)
                 db_folder.set_message_flags(uid, message.flags)
+
+        event_data = {
+            'added': [],
+            'removed': [],
+            'flags_changed': self.uid_list,
+        }
+        folder_updated.send(self.folder, **event_data)

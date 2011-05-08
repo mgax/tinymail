@@ -311,9 +311,15 @@ class ModifyFlagsTest(unittest.TestCase):
             self.account.perform_update()
 
     def test_add_flag(self):
+        from tinymail.account import folder_updated
         fol1 = self.account.get_folder('fol1')
+
         with mock_worker(**self.imap_data) as worker:
-            fol1.change_flag([4, 15], 'add', '\\Seen')
+            with listen_for(folder_updated) as caught_signals:
+                fol1.change_flag([4, 15], 'add', '\\Seen')
+
+        event_data = {'added': [], 'removed': [], 'flags_changed': [4, 15]}
+        self.assertEqual(caught_signals, [(fol1, event_data)])
 
         idx = lambda uid: worker.messages_in_folder['fol1'][uid]['index']
         worker.change_flag.assert_called_once_with(
@@ -330,9 +336,15 @@ class ModifyFlagsTest(unittest.TestCase):
                          set(['\\Seen', '\\Flagged']))
 
     def test_del_flag(self):
+        from tinymail.account import folder_updated
         fol1 = self.account.get_folder('fol1')
+
         with mock_worker(**self.imap_data) as worker:
-            fol1.change_flag([4, 15], 'del', '\\Seen')
+            with listen_for(folder_updated) as caught_signals:
+                fol1.change_flag([4, 15], 'del', '\\Seen')
+
+        event_data = {'added': [], 'removed': [], 'flags_changed': [4, 15]}
+        self.assertEqual(caught_signals, [(fol1, event_data)])
 
         idx = lambda uid: worker.messages_in_folder['fol1'][uid]['index']
         worker.change_flag.assert_called_once_with(
