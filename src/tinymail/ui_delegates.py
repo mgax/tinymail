@@ -31,18 +31,10 @@ def objc_callback(func):
 
     return wrapper
 
-class FolderListingItem(NSObject):
-    @classmethod
-    def itemWithFolder_(cls, folder):
-        item = FolderListingItem.alloc().init()
-        item.folder = folder
-        return item
-
-
-class AccountController(NSObject):
+class MailboxesAccountItem(NSObject):
     def init(self):
-        self = super(AccountController, self).init()
-        self.items = []
+        self = super(MailboxesAccountItem, self).init()
+        self.folder_items = []
         self.outline_view = None
         return self
 
@@ -68,28 +60,28 @@ class AccountController(NSObject):
         outline_view.reloadData()
 
     def folders_updated(self, account):
-        self.items[:] = [FolderListingItem.itemWithFolder_(f)
-                         for n, f in sorted(account._folders.items())]
+        self.folder_items[:] = [MailboxesFolderItem.newWithFolder_(f)
+                                for n, f in sorted(account._folders.items())]
 
         if self.outline_view is not None:
             self.outline_view.reloadData()
 
     def outlineView_numberOfChildrenOfItem_(self, outline_view, item):
         assert item is None
-        return len(self.items)
+        return len(self.folder_items)
 
     def outlineView_isItemExpandable_(self, outline_view, item):
-        assert isinstance(item, FolderListingItem)
+        assert isinstance(item, MailboxesFolderItem)
         return False
 
     def outlineView_child_ofItem_(self, outline_view, child, item):
-        assert item is None and -1 < child < len(self.items)
-        output = self.items[child]
+        assert item is None and -1 < child < len(self.folder_items)
+        output = self.folder_items[child]
         return output
 
     def outlineView_objectValueForTableColumn_byItem_(self, outline_view,
                                                       tableColumn, item):
-        assert isinstance(item, FolderListingItem)
+        assert isinstance(item, MailboxesFolderItem)
         return item.folder.name
 
     def outlineView_shouldEditTableColumn_item_(self, outline_view,
@@ -105,6 +97,14 @@ class AccountController(NSObject):
             new_value = outline_view.itemAtRow_(row).folder
 
         folder_selected.send(self, folder=new_value)
+
+
+class MailboxesFolderItem(NSObject):
+    @classmethod
+    def newWithFolder_(cls, folder):
+        self = MailboxesFolderItem.alloc().init()
+        self.folder = folder
+        return self
 
 
 class FolderController(NSObject):
@@ -317,14 +317,14 @@ class TinymailAppDelegate(NSObject):
     def init(self):
         self = super(TinymailAppDelegate, self).init()
         self.controllers = { # because we have ownership of the controllers
-            'account': AccountController.newBlank(),
+            'account': MailboxesAccountItem.newBlank(),
             'folder': FolderController.newBlank(),
             'message': MessageController.newBlank(),
         }
         self.accounts = {}
         return self
 
-    def setAccountController_(self, ac):
+    def setMailboxesAccountController_(self, ac):
         self.controllers['account'].setView_(None)
         self.controllers['account'] = ac
         self.controllers['account'].setView_(self.foldersPane)
@@ -369,8 +369,8 @@ class TinymailAppDelegate(NSObject):
 
     def set_up_ui(self):
         def handle_account_opened(account):
-            ac = AccountController.newWithAccount_(account)
-            self.setAccountController_(ac)
+            ac = MailboxesAccountItem.newWithAccount_(account)
+            self.setMailboxesAccountController_(ac)
         account_opened.connect(handle_account_opened, weak=False)
 
         def handle_folder_selected(sender, folder):

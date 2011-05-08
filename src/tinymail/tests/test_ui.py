@@ -27,10 +27,10 @@ def sleep(delay):
     return cb
 
 def setup_account_controller(account):
-    from tinymail.ui_delegates import AccountController
+    from tinymail.ui_delegates import MailboxesAccountItem
     folders_pane = get_app_delegate().foldersPane
-    account_controller = AccountController.newWithAccount_(account)
-    get_app_delegate().setAccountController_(account_controller)
+    account_controller = MailboxesAccountItem.newWithAccount_(account)
+    get_app_delegate().setMailboxesAccountController_(account_controller)
     return folders_pane
 
 def setup_folder_controller(folder):
@@ -59,10 +59,9 @@ def account_with_folders(**folders):
         account.perform_update()
     return account
 
-class AccountControllerTest(AsyncTestCase):
+class MailboxesControllerTest(AsyncTestCase):
 
     def setUp(self):
-        from tinymail.ui_delegates import AccountController
         self.imap_data = {'fol1': {}, 'fol2': {}}
         self.account = account_with_folders(**self.imap_data)
         self.folders_pane = setup_account_controller(self.account)
