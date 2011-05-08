@@ -50,18 +50,17 @@ def mock_worker(**folders):
         return defer([mbox_status, messages_in_folder[name]])
     worker.get_messages_in_folder.side_effect = get_messages_in_folder
 
-    def get_message_headers(indices):
+    def get_message_headers(uid_list):
         name = state['name']
         message_headers = {}
-        for i in indices:
-            message_headers[i] = message_headers_in_folder[name][i]
+        for uid in uid_list:
+            i = messages_in_folder[name][uid]['index']
+            message_headers[uid] = message_headers_in_folder[name][i]
         return defer(message_headers)
     worker.get_message_headers.side_effect = get_message_headers
 
     worker.change_flag.return_value = defer(None)
     worker.disconnect.return_value = defer(None)
-
-    worker.messages_in_folder = messages_in_folder
 
     with patch('tinymail.account._new_imap_worker', Mock(return_value=worker)):
         yield worker

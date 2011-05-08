@@ -180,19 +180,11 @@ class AccountUpdateJob(AsyncJob):
         event_data = {'added': [], 'removed': [], 'flags_changed': []}
 
         # messages added on server; add them locally too
-        new_indices = set()
-        index_to_uuid = {}
-        for uid in new_message_ids:
-            index = message_data[uid]['index']
-            new_indices.add(index)
-            index_to_uuid[index] = uid
-
-        if new_indices:
-            headers_by_index = yield worker.get_message_headers(new_indices)
+        if new_message_ids:
+            headers_by_uid = yield worker.get_message_headers(new_message_ids)
             with db.transaction():
                 sql_msgs = []
-                for index, raw_headers in headers_by_index.iteritems():
-                    uid = index_to_uuid[index]
+                for uid, raw_headers in headers_by_uid.iteritems():
                     flags = message_data[uid]['flags']
                     sql_msgs.append((uid, flags, raw_headers))
                     message = Message(folder, uid, flags, raw_headers)
@@ -220,13 +212,13 @@ class AccountUpdateJob(AsyncJob):
                     flags_changed += 1
                     event_data['flags_changed'].append(uid)
 
-        if new_indices or removed_message_ids or flags_changed:
+        if new_message_ids or removed_message_ids or flags_changed:
             folder_updated.send(folder, **event_data)
 
         log.info("Finished updating folder %r: %d messages "
                  "(%d new, %d del, %d flags)",
                  folder.name, len(message_data),
-                 len(new_indices), len(removed_message_ids), flags_changed)
+                 len(new_message_ids), len(removed_message_ids), flags_changed)
 
 class MessageLoadFullJob(AsyncJob):
     def __init__(self, message):

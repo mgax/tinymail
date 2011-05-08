@@ -90,6 +90,7 @@ class ImapWorkerTest(unittest.TestCase):
 
     def test_get_message_headers(self):
         worker, imap_conn = self._worker_with_fake_imap()
+        worker.message_index = {31: 1, 32: 2, 35: 5}
         hdr = ('From: somebody@example.com\r\n'
                'To: somebody_else@example.com\r\n'
                'Subject: One test message!\r\n'
@@ -100,11 +101,11 @@ class ImapWorkerTest(unittest.TestCase):
             ('5 (BODY[HEADER] {%s} FLAGS (\\Seen)' % len(hdr), hdr), ')',
         ])
 
-        header_by_index = worker.get_message_headers([1, 2, 5])
+        header_by_index = worker.get_message_headers([31, 32, 35])
 
         imap_conn.fetch.assert_called_once_with('1,2,5',
                                                 '(FLAGS BODY.PEEK[HEADER])')
-        self.assertEqual(header_by_index, {1: hdr, 2: hdr, 5: hdr})
+        self.assertEqual(header_by_index, {31: hdr, 32: hdr, 35: hdr})
 
     def test_get_message_body(self):
         worker, imap_conn = self._worker_with_fake_imap()

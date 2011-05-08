@@ -113,10 +113,14 @@ class ImapWorker(object):
 
         return mbox_status, message_data
 
-    def get_message_headers(self, message_indices):
+    def get_message_headers(self, uid_list):
         """ Get headers of specified messagse from current folder. """
 
-        log.debug("get_message_headers for %r", message_indices)
+        log.debug("get_message_headers for %r", uid_list)
+
+        message_indices = [self.message_index[uid] for uid in uid_list]
+        message_indices.sort()
+        message_uid = dict((idx, uid) for uid, idx in self.message_index.items())
 
         msgs = ','.join(map(str, message_indices))
         data = self.conn.fetch(msgs, '(FLAGS BODY.PEEK[HEADER])')
@@ -130,14 +134,14 @@ class ImapWorker(object):
                 skip = next(data, None)
                 assert skip == ')', 'bad closing'
 
-        headers_by_index = {}
+        headers_by_uid = {}
         for fragment in iter_fragments(data):
             preamble, mime_headers = fragment
             assert 'BODY[HEADER]' in preamble, 'bad preamble'
-            message_index = int(preamble.split(' ', 1)[0])
-            headers_by_index[message_index] = mime_headers
+            idx = int(preamble.split(' ', 1)[0])
+            headers_by_uid[message_uid[idx]] = mime_headers
 
-        return headers_by_index
+        return headers_by_uid
 
     def get_message_body(self, uid):
         log.debug("get_message_body for %r", uid)
