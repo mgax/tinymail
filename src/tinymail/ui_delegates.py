@@ -44,6 +44,10 @@ class MailboxesController(NSObject):
         if outline_view is None:
             return
 
+        outline_view.setDataSource_(self)
+        outline_view.setDelegate_(self)
+        outline_view.reloadData()
+
     def update_view(self, sender=None):
         if self.outline_view is not None:
             self.outline_view.reloadData()
@@ -52,9 +56,9 @@ class MailboxesController(NSObject):
         ac = MailboxesAccountItem.newWithAccount_(account)
         ac.updated.connect(self.update_view, weak=False)
         self.account_items.append(ac)
-        self.outline_view.setDataSource_(ac)
-        self.outline_view.setDelegate_(ac)
-        self.update_view()
+        if self.outline_view is not None:
+            self.outline_view.reloadData()
+            self.outline_view.expandItem_(ac)
 
     def remove_account(self, account):
         for ac in self.account_items:
@@ -63,10 +67,56 @@ class MailboxesController(NSObject):
         else:
             raise ValueError("Unknown account %r %r" %
                              (account, self.account_items))
-        self.outline_view.setDataSource_(None)
-        self.outline_view.setDelegate_(None)
         self.account_items.remove(ac)
         self.update_view()
+
+    def outlineView_numberOfChildrenOfItem_(self, outline_view, item):
+        if item is None:
+            return len(self.account_items)
+        else:
+            assert isinstance(item, MailboxesAccountItem)
+            return len(item.folder_items)
+
+    def outlineView_isItemExpandable_(self, outline_view, item):
+        if isinstance(item, MailboxesAccountItem):
+            return True
+        else:
+            assert isinstance(item, MailboxesFolderItem)
+            return False
+
+    def outlineView_child_ofItem_(self, outline_view, child_idx, item):
+        if item is None:
+            return self.account_items[child_idx]
+        else:
+            assert isinstance(item, MailboxesAccountItem)
+            return item.folder_items[child_idx]
+
+    def outlineView_objectValueForTableColumn_byItem_(self, outline_view,
+                                                      tableColumn, item):
+        if isinstance(item, MailboxesAccountItem):
+            return item.account.name
+        else:
+            assert isinstance(item, MailboxesFolderItem)
+            return item.folder.name
+
+    def outlineView_shouldEditTableColumn_item_(self, outline_view,
+                                                tableColumn, item):
+        return False
+
+    def outlineViewSelectionDidChange_(self, notification):
+        outline_view = notification.object()
+        row = outline_view.selectedRow()
+        if row == -1:
+            new_value = None
+        else:
+            item = outline_view.itemAtRow_(row)
+            if isinstance(item, MailboxesAccountItem):
+                new_value = None
+            else:
+                assert isinstance(item, MailboxesFolderItem)
+                new_value = item.folder
+
+        folder_selected.send(self, folder=new_value)
 
 
 class MailboxesAccountItem(NSObject):
@@ -93,38 +143,6 @@ class MailboxesAccountItem(NSObject):
                                 for n, f in sorted(account._folders.items())]
 
         self.updated.send(self)
-
-    def outlineView_numberOfChildrenOfItem_(self, outline_view, item):
-        assert item is None
-        return len(self.folder_items)
-
-    def outlineView_isItemExpandable_(self, outline_view, item):
-        assert isinstance(item, MailboxesFolderItem)
-        return False
-
-    def outlineView_child_ofItem_(self, outline_view, child, item):
-        assert item is None and -1 < child < len(self.folder_items)
-        output = self.folder_items[child]
-        return output
-
-    def outlineView_objectValueForTableColumn_byItem_(self, outline_view,
-                                                      tableColumn, item):
-        assert isinstance(item, MailboxesFolderItem)
-        return item.folder.name
-
-    def outlineView_shouldEditTableColumn_item_(self, outline_view,
-                                                tableColumn, item):
-        return False
-
-    def outlineViewSelectionDidChange_(self, notification):
-        outline_view = notification.object()
-        row = outline_view.selectedRow()
-        if row == -1:
-            new_value = None
-        else:
-            new_value = outline_view.itemAtRow_(row).folder
-
-        folder_selected.send(self, folder=new_value)
 
 
 class MailboxesFolderItem(NSObject):

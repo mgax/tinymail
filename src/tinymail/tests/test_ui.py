@@ -60,9 +60,9 @@ class MailboxesControllerTest(AsyncTestCase):
         from tinymail.account import Folder
 
     def test_show_folders(self):
-        cell1 = self.folders_pane.preparedCellAtColumn_row_(0, 0)
+        cell1 = self.folders_pane.preparedCellAtColumn_row_(0, 1)
         self.assertEqual(cell1.objectValue(), 'fol1')
-        cell2 = self.folders_pane.preparedCellAtColumn_row_(0, 1)
+        cell2 = self.folders_pane.preparedCellAtColumn_row_(0, 2)
         self.assertEqual(cell2.objectValue(), 'fol2')
 
     def test_folders_updated(self):
@@ -70,14 +70,14 @@ class MailboxesControllerTest(AsyncTestCase):
         with mock_worker(**self.imap_data):
             self.account.perform_update()
 
-        cell1 = self.folders_pane.preparedCellAtColumn_row_(0, 2)
+        cell1 = self.folders_pane.preparedCellAtColumn_row_(0, 3)
         self.assertEqual(cell1.objectValue(), 'fol3')
 
     def test_select_folder(self):
         from tinymail.ui_delegates import folder_selected
         with listen_for(folder_selected) as caught_signals:
             self.folders_pane.selectRowIndexes_byExtendingSelection_(
-                    objc_index_set([1]), False)
+                    objc_index_set([2]), False)
 
         account_controller = self.folders_pane.delegate()
         self.assertEqual(caught_signals, [
