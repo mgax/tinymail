@@ -35,7 +35,7 @@ class Account(object):
 
     def _load_from_db(self):
         # TODO move this into an async job?
-        db_account = self._db.get_account('the-account')
+        db_account = self._db.get_account(self.name)
         db_account_folders = list(db_account.list_folders())
         for db_folder in db_account_folders:
             name = db_folder.name
@@ -133,7 +133,7 @@ class AccountUpdateJob(AsyncJob):
 
         if new_mailbox_names:
             db = self.account._db
-            db_account = db.get_account('the-account')
+            db_account = db.get_account(self.account.name)
             with db.transaction():
                 for name in new_mailbox_names:
                     log.info("New folder %r", name)
@@ -142,7 +142,7 @@ class AccountUpdateJob(AsyncJob):
 
         if removed_mailbox_names:
             db = self.account._db
-            db_account = db.get_account('the-account')
+            db_account = db.get_account(self.account.name)
             with db.transaction():
                 for name in removed_mailbox_names:
                     log.info("Folder %r was removed", name)
@@ -160,7 +160,7 @@ class AccountUpdateJob(AsyncJob):
     def update_folder(self, worker, folder):
         log.debug("Updating folder %r", folder.name)
         db = self.account._db
-        db_folder = db.get_account('the-account').get_folder(folder.name)
+        db_folder = db.get_account(self.account.name).get_folder(folder.name)
         mbox_status, message_data = yield worker.get_messages_in_folder(folder.name)
 
         if mbox_status['UIDVALIDITY'] != folder._uidvalidity:
@@ -293,7 +293,7 @@ class FolderChangeFlagJob(AsyncJob):
 
         db = self.folder.account._db
         with db.transaction():
-            db_account = db.get_account('the-account')
+            db_account = db.get_account(self.folder.account.name)
             db_folder = db_account.get_folder(self.folder.name)
             for uid in self.uid_list:
                 message = self.folder._messages[uid]
