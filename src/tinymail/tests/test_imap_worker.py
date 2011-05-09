@@ -2,14 +2,14 @@ import imaplib
 import unittest2 as unittest
 from mock import Mock, patch
 
-class ImapWorkerTest(unittest.TestCase):
-    def _worker_with_fake_imap(self):
-        from tinymail.imap_worker import ImapWorker, ConnectionErrorWrapper
-        worker = ImapWorker()
-        imap_conn = Mock(spec=imaplib.IMAP4)
-        worker.conn = ConnectionErrorWrapper(imap_conn)
-        return worker, imap_conn
+def worker_with_fake_imap():
+    from tinymail.imap_worker import ImapWorker, ConnectionErrorWrapper
+    worker = ImapWorker()
+    imap_conn = Mock(spec=imaplib.IMAP4)
+    worker.conn = ConnectionErrorWrapper(imap_conn)
+    return worker, imap_conn
 
+class ImapWorkerTest(unittest.TestCase):
     @patch('tinymail.imap_worker.imaplib')
     def test_connect(self, mock_imaplib):
         mock_conn = Mock(spec=imaplib.IMAP4)
@@ -24,7 +24,7 @@ class ImapWorkerTest(unittest.TestCase):
         mock_conn.login.assert_called_once_with('test_login', 'test_pass')
 
     def test_get_mailbox_names(self):
-        worker, imap_conn = self._worker_with_fake_imap()
+        worker, imap_conn = worker_with_fake_imap()
         imap_conn.list.return_value = ('OK', [
             r'(\HasNoChildren) "." INBOX',
             r'(\HasNoChildren) "." "fol1"',
@@ -38,14 +38,14 @@ class ImapWorkerTest(unittest.TestCase):
 
     def test_crash_on_non_ascii_folder(self):
         from tinymail.imap_worker import ImapWorkerError
-        worker, imap_conn = self._worker_with_fake_imap()
+        worker, imap_conn = worker_with_fake_imap()
         imap_conn.list.return_value = ('OK', ['(\\HasNoChildren) "." "f\xb3"'])
 
         msg = "Non-ascii mailbox names not supported"
         self.assertRaisesRegexp(ImapWorkerError, msg, worker.get_mailbox_names)
 
     def test_get_messages_in_folder(self):
-        worker, imap_conn = self._worker_with_fake_imap()
+        worker, imap_conn = worker_with_fake_imap()
         imap_conn.select.return_value = ('OK', [])
         imap_conn.status.return_value = ('OK', [
             '"fol1" (MESSAGES 3 RECENT 1 UIDNEXT 14 '
@@ -77,7 +77,7 @@ class ImapWorkerTest(unittest.TestCase):
         })
 
     def test_open_mailbox_for_writing(self):
-        worker, imap_conn = self._worker_with_fake_imap()
+        worker, imap_conn = worker_with_fake_imap()
         imap_conn.select.return_value = ('OK', [])
         imap_conn.status.return_value = ('OK', [
             '"fol1" (MESSAGES 1 RECENT 1 UIDNEXT 14 '
@@ -89,7 +89,7 @@ class ImapWorkerTest(unittest.TestCase):
         imap_conn.select.assert_called_once_with('fol1', readonly=False)
 
     def test_get_message_headers(self):
-        worker, imap_conn = self._worker_with_fake_imap()
+        worker, imap_conn = worker_with_fake_imap()
         worker.message_index = {31: 1, 32: 2, 35: 5}
         hdr = ('From: somebody@example.com\r\n'
                'To: somebody_else@example.com\r\n'
@@ -108,7 +108,7 @@ class ImapWorkerTest(unittest.TestCase):
         self.assertEqual(header_by_index, {31: hdr, 32: hdr, 35: hdr})
 
     def test_get_message_body(self):
-        worker, imap_conn = self._worker_with_fake_imap()
+        worker, imap_conn = worker_with_fake_imap()
         worker.message_index = {22: 5}
         response_data = [('5 (RFC822 {7}', 'ZE BODY'), ')']
         imap_conn.fetch.return_value = ('OK', response_data)
@@ -119,7 +119,7 @@ class ImapWorkerTest(unittest.TestCase):
         self.assertEqual(message_body, 'ZE BODY')
 
     def test_add_flag(self):
-        worker, imap_conn = self._worker_with_fake_imap()
+        worker, imap_conn = worker_with_fake_imap()
         worker.message_index = {31: 1, 32: 2, 35: 5}
         imap_conn.store.return_value = ('OK', [])
 
@@ -128,7 +128,7 @@ class ImapWorkerTest(unittest.TestCase):
         imap_conn.store.assert_called_once_with('1,2,5', '+FLAGS', '\\Seen')
 
     def test_remove_flag(self):
-        worker, imap_conn = self._worker_with_fake_imap()
+        worker, imap_conn = worker_with_fake_imap()
         worker.message_index = {31: 1, 32: 2, 35: 5}
         imap_conn.store.return_value = ('OK', [])
 
@@ -137,7 +137,7 @@ class ImapWorkerTest(unittest.TestCase):
         imap_conn.store.assert_called_once_with('1,2,5', '-FLAGS', '\\Flagged')
 
     def test_close(self):
-        worker, imap_conn = self._worker_with_fake_imap()
+        worker, imap_conn = worker_with_fake_imap()
         imap_conn.close.return_value = ('OK', [])
 
         worker.close_mailbox()
