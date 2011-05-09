@@ -16,7 +16,7 @@ def listen_for(signal):
         yield caught_signals
 
 @contextmanager
-def mock_worker(**folders):
+def mock_worker(**imap_spec):
     from mock import Mock, patch
     from monocle.callback import defer
     from tinymail.imap_worker import ImapWorker
@@ -25,24 +25,16 @@ def mock_worker(**folders):
     worker.done = Mock() # `done` is implemented by `AsyncWorkerProxy`
     state = {}
 
-    message_index_of_folder = {}
-    flags_in_folder = {}
-    message_headers_in_folder = {}
-    folder_uidvalidity = {}
-    for name in folders:
-        flags = {}
-        message_headers = {}
-        message_index = {}
-        folder_uidvalidity[name] = folders[name].pop('UIDVALIDITY', 123456)
-        for i, (uid, spec) in enumerate(folders[name].iteritems()):
-            if spec is None:
-                spec = (uid, set(), "PLACEHOLDER HEADER")
-            flags[uid] = spec[1]
-            message_index[uid] = i
-            message_headers[i] = spec[2]
-        flags_in_folder[name] = flags
-        message_index_of_folder[name] = message_index
-        message_headers_in_folder[name] = message_headers
+    folders = {}
+    for name, mbox_spec in imap_spec.iteritems():
+        folder = folders[name] = {'flags': {}, 'headers': {}, 'index': {}}
+        folder['uidvalidity'] = mbox_spec.pop('UIDVALIDITY', 123456)
+        for i, (uid, msg_spec) in enumerate(mbox_spec.iteritems()):
+            if msg_spec is None:
+                msg_spec = (uid, set(), "PLACEHOLDER HEADER")
+            folder['flags'][uid] = msg_spec[1]
+            folder['index'][uid] = i
+            folder['headers'][i] = msg_spec[2]
 
     worker.connect.return_value = defer(None)
 
@@ -50,18 +42,18 @@ def mock_worker(**folders):
 
     def select_mailbox(name, readonly=True):
         state['name'] = name
-        return defer({'MESSAGES': len(flags_in_folder[name]),
-                      'UIDVALIDITY': folder_uidvalidity[name]})
+        return defer({'MESSAGES': len(folders[name]['flags']),
+                      'UIDVALIDITY': folders[name]['uidvalidity']})
     worker.select_mailbox = select_mailbox
 
-    worker.get_message_flags = lambda: defer(flags_in_folder[state['name']])
+    worker.get_message_flags = lambda: defer(folders[state['name']]['flags'])
 
     def get_message_headers(uid_list):
         name = state['name']
         message_headers = {}
         for uid in uid_list:
-            i = message_index_of_folder[name][uid]
-            message_headers[uid] = message_headers_in_folder[name][i]
+            i = folders[name]['index'][uid]
+            message_headers[uid] = folders[name]['headers'][i]
         return defer(message_headers)
     worker.get_message_headers.side_effect = get_message_headers
 
