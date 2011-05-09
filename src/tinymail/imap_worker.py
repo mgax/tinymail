@@ -78,25 +78,34 @@ class ImapWorker(object):
 
         return paths
 
+    def select_mailbox(self, name, readonly=True):
+        """
+        Select a mailbox and check its status. Returns mailbox status
+        information.
+        """
+        name = name.encode('ascii')
+
+        log.debug("select_mailbox %r, readonly=%r", name, readonly)
+
+        self.message_index = {}
+
+        count = self.conn.select(name, readonly=readonly)
+
+        data = self.conn.status(name, '(MESSAGES UIDNEXT UIDVALIDITY)')
+        m = status_pattern.match(data[0])
+        assert m is not None
+        assert m.group('name').strip().strip('"') == name
+        bits = m.group('status').strip().split()
+        mailbox_status = dict(zip(bits[0::2], map(int, bits[1::2])))
+
+        return mailbox_status
+
     def get_messages_in_folder(self, folder_name, readonly=True):
         """
         Select folder `folder_name`; return folder status + message flags.
         """
 
-        log.debug("get_messages_in_folder %r", folder_name)
-
-        self.message_index = {}
-
-        count = self.conn.select(folder_name.encode('ascii'),
-                                 readonly=readonly)
-        data = self.conn.status(folder_name.encode('ascii'),
-                                '(MESSAGES UIDNEXT UIDVALIDITY)')
-
-        m = status_pattern.match(data[0])
-        assert m is not None
-        assert m.group('name').strip().strip('"') == folder_name.encode('ascii')
-        bits = m.group('status').strip().split()
-        mbox_status = dict(zip(bits[::2], map(int, bits[1::2])))
+        mbox_status = self.select_mailbox(folder_name, readonly)
 
         message_data = {}
         if mbox_status['MESSAGES']:
