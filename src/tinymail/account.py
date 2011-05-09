@@ -161,7 +161,9 @@ class AccountUpdateJob(AsyncJob):
         log.debug("Updating folder %r", folder.name)
         db = self.account._db
         db_folder = db.get_account(self.account.name).get_folder(folder.name)
-        mbox_status, message_data = yield worker.get_messages_in_folder(folder.name)
+        mbox_status = yield worker.select_mailbox(folder.name)
+        message_flags = yield worker.get_message_flags()
+        assert mbox_status['MESSAGES'] == len(message_flags)
 
         if mbox_status['UIDVALIDITY'] != folder._uidvalidity:
             if folder._uidvalidity is not None:
@@ -172,7 +174,7 @@ class AccountUpdateJob(AsyncJob):
                 db_folder.del_all_messages()
                 db_folder.set_uidvalidity(folder._uidvalidity)
 
-        server_message_ids = set(message_data)
+        server_message_ids = set(message_flags)
         our_message_ids = set(folder._messages)
         new_message_ids = server_message_ids - our_message_ids
         removed_message_ids = our_message_ids - server_message_ids
@@ -185,7 +187,7 @@ class AccountUpdateJob(AsyncJob):
             with db.transaction():
                 sql_msgs = []
                 for uid, raw_headers in headers_by_uid.iteritems():
-                    flags = message_data[uid]['flags']
+                    flags = set(message_flags[uid])
                     sql_msgs.append((uid, flags, raw_headers))
                     message = Message(folder, uid, flags, raw_headers)
                     folder._messages[uid] = message
@@ -205,7 +207,7 @@ class AccountUpdateJob(AsyncJob):
         with db.transaction():
             for uid in our_message_ids & server_message_ids:
                 message = folder._messages[uid]
-                new_flags = message_data[uid]['flags']
+                new_flags = set(message_flags[uid])
                 if message.flags != new_flags:
                     message.flags = new_flags
                     db_folder.set_message_flags(uid, new_flags)
@@ -217,7 +219,7 @@ class AccountUpdateJob(AsyncJob):
 
         log.info("Finished updating folder %r: %d messages "
                  "(%d new, %d del, %d flags)",
-                 folder.name, len(message_data),
+                 folder.name, mbox_status['MESSAGES'],
                  len(new_message_ids), len(removed_message_ids), flags_changed)
 
         yield worker.close_mailbox()
@@ -244,9 +246,7 @@ class MessageLoadFullJob(AsyncJob):
         log.debug("Loading full message %r in folder %r",
                  message.uid, message.folder.name)
 
-        # we must open the mailbox
-        yield worker.get_messages_in_folder(message.folder.name)
-
+        yield worker.select_mailbox(message.folder.name)
         body = yield worker.get_message_body(message.uid)
         message.raw_full = body
 
@@ -280,9 +280,7 @@ class FolderChangeFlagJob(AsyncJob):
         log.debug("Changing flags in folder %r, messages %r: %r %r",
                   self.folder, self.uid_list, self.operation, self.flag)
 
-        # we must open the mailbox
-        yield worker.get_messages_in_folder(self.folder.name, readonly=False)
-
+        yield worker.select_mailbox(self.folder.name, readonly=False)
         yield worker.change_flag(self.uid_list, self.operation, self.flag)
 
         db = self.folder.account._db
