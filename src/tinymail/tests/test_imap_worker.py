@@ -79,25 +79,6 @@ class ImapWorkerTest(unittest.TestCase):
         self.assertEqual(worker.message_index, {6:1, 8:2, 13:3})
         imap_conn.fetch.assert_called_once_with('1:*', '(UID)')
 
-    def test_get_messages_in_folder(self):
-        worker, imap_conn = worker_with_fake_imap()
-        worker.select_mailbox = Mock(return_value={'MESSAGES': 3})
-        imap_conn.fetch.return_value = ('OK', [
-            '1 (UID 6 FLAGS (\\Seen))',
-            '2 (UID 8 FLAGS (\\Answered \\Seen))',
-            '3 (UID 13 FLAGS ())',
-        ])
-
-        mbox_status, message_data = worker.get_messages_in_folder('fol1')
-
-        imap_conn.fetch.assert_called_once_with('1:*', '(UID FLAGS)')
-
-        self.assertEqual(message_data, {
-            6: {'index': 1, 'flags': set([r'\Seen'])},
-            8: {'index': 2, 'flags': set([r'\Answered', r'\Seen'])},
-            13: {'index': 3, 'flags': set()},
-        })
-
     def test_open_mailbox_for_writing(self):
         worker, imap_conn = worker_with_fake_imap()
         imap_conn.select.return_value = ('OK', [])

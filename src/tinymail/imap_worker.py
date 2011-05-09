@@ -13,9 +13,6 @@ status_pattern = re.compile(r'^(?P<name>[^(]+)\((?P<status>[\w\d\s]*)\)$')
 
 uid_pattern = re.compile(r'(?P<index>\d+)\s+\(UID\s*(?P<uid>\d+)\)$')
 
-uid_and_flags_pattern = re.compile(r'(?P<index>\d+)\s+\(UID\s*(?P<uid>\d+)'
-                                   r'\s+FLAGS \((?P<flags>[^\)]*)\)\)$')
-
 flags_pattern = re.compile(r'(?P<index>\d+)\s+\(FLAGS\s+'
                            r'\((?P<flags>[^\)]*)\)\)$')
 
@@ -114,27 +111,6 @@ class ImapWorker(object):
                 self.message_uid[index] = uid
 
         return mailbox_status
-
-    def get_messages_in_folder(self, folder_name, readonly=True):
-        """
-        Select folder `folder_name`; return folder status + message flags.
-        """
-
-        mbox_status = self.select_mailbox(folder_name, readonly)
-
-        message_data = {}
-        if mbox_status['MESSAGES']:
-            data = self.conn.fetch('1:*', '(UID FLAGS)')
-            for item in data:
-                m = uid_and_flags_pattern.match(item)
-                assert m is not None
-                (uid, index) = (int(m.group('uid')), int(m.group('index')))
-                message_data[uid] = {
-                    'flags': set(m.group('flags').split()),
-                    'index': index,
-                }
-
-        return mbox_status, message_data
 
     def get_message_flags(self):
         """ Get flags for all messages in this mailbox. """
