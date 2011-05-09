@@ -16,6 +16,9 @@ uid_pattern = re.compile(r'(?P<index>\d+)\s+\(UID\s*(?P<uid>\d+)\)$')
 uid_and_flags_pattern = re.compile(r'(?P<index>\d+)\s+\(UID\s*(?P<uid>\d+)'
                                    r'\s+FLAGS \((?P<flags>[^\)]*)\)\)$')
 
+flags_pattern = re.compile(r'(?P<index>\d+)\s+\(FLAGS\s+'
+                           r'\((?P<flags>[^\)]*)\)\)$')
+
 class ImapWorkerError(Exception):
     """ Error encountered while talking to IMAP server. """
 
@@ -90,6 +93,7 @@ class ImapWorker(object):
         log.debug("select_mailbox %r, readonly=%r", name, readonly)
 
         self.message_index = {}
+        self.message_uid = {}
 
         count = self.conn.select(name, readonly=readonly)
 
@@ -107,6 +111,7 @@ class ImapWorker(object):
                 assert m is not None
                 (uid, index) = (int(m.group('uid')), int(m.group('index')))
                 self.message_index[uid] = index
+                self.message_uid[index] = uid
 
         return mailbox_status
 
@@ -130,6 +135,22 @@ class ImapWorker(object):
                 }
 
         return mbox_status, message_data
+
+    def get_message_flags(self):
+        """ Get flags for all messages in this mailbox. """
+
+        log.debug("get_message_flags")
+
+        data = self.conn.fetch('1:*', '(FLAGS)')
+
+        flags = {}
+        for item in data:
+            m = flags_pattern.match(item)
+            assert m is not None
+            uid = self.message_uid[int(m.group('index'))]
+            flags[uid] = m.group('flags').split()
+
+        return flags
 
     def get_message_headers(self, uid_list):
         """ Get headers of specified messagse from current folder. """

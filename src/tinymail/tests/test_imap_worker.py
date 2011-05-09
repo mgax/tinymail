@@ -109,6 +109,21 @@ class ImapWorkerTest(unittest.TestCase):
 
         imap_conn.select.assert_called_once_with('fol1', readonly=False)
 
+    def test_get_message_flags(self):
+        worker, imap_conn = worker_with_fake_imap()
+        worker.message_uid = {1:6, 2:8, 3:13}
+        _flags = {6: [r'\Seen'], 8: [r'\Answered', r'\Seen'], 13: []}
+        imap_conn.fetch.return_value = ('OK', [
+            '1 (FLAGS (\\Seen))',
+            '2 (FLAGS (\\Answered \\Seen))',
+            '3 (FLAGS ())',
+        ])
+
+        message_flags = worker.get_message_flags()
+
+        imap_conn.fetch.assert_called_once_with('1:*', '(FLAGS)')
+        self.assertEqual(message_flags, _flags)
+
     def test_get_message_headers(self):
         worker, imap_conn = worker_with_fake_imap()
         worker.message_index = {31: 1, 32: 2, 35: 5}
