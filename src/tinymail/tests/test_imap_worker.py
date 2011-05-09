@@ -48,8 +48,9 @@ class ImapWorkerTest(unittest.TestCase):
         worker, imap_conn = worker_with_fake_imap()
         imap_conn.select.return_value = ('OK', [])
         imap_conn.status.return_value = ('OK', [
-            '"fol1" (MESSAGES 3 RECENT 1 UIDNEXT 14 '
+            '"fol1" (MESSAGES 0 RECENT 1 UIDNEXT 14 '
                     'UIDVALIDITY 1300189203 UNSEEN 1)'])
+        imap_conn.fetch.return_value = ('OK', [])
 
         mailbox_status = worker.select_mailbox('fol1')
 
@@ -59,15 +60,28 @@ class ImapWorkerTest(unittest.TestCase):
         self.assertEqual(mailbox_status, {
             'UIDNEXT': 14,
             'UIDVALIDITY': 1300189203,
-            'MESSAGES': 3,
+            'MESSAGES': 0,
             'UNSEEN': 1,
             'RECENT': 1,
         })
 
+    def test_map_uids(self):
+        worker, imap_conn = worker_with_fake_imap()
+        _status_data = ['"fol1" (MESSAGES 3 RECENT 1 UIDNEXT 14 '
+                        'UIDVALIDITY 1300189203 UNSEEN 1)']
+        _fetch_data = ['1 (UID 6)', '2 (UID 8)', '3 (UID 13)']
+        imap_conn.select.return_value = ('OK', [])
+        imap_conn.status.return_value = ('OK', _status_data)
+        imap_conn.fetch.return_value = ('OK', _fetch_data)
+
+        worker.select_mailbox('fol1')
+
+        self.assertEqual(worker.message_index, {6:1, 8:2, 13:3})
+        imap_conn.fetch.assert_called_once_with('1:*', '(UID)')
+
     def test_get_messages_in_folder(self):
         worker, imap_conn = worker_with_fake_imap()
         worker.select_mailbox = Mock(return_value={'MESSAGES': 3})
-        worker.message_index = {}
         imap_conn.fetch.return_value = ('OK', [
             '1 (UID 6 FLAGS (\\Seen))',
             '2 (UID 8 FLAGS (\\Answered \\Seen))',

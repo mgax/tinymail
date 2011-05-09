@@ -11,8 +11,10 @@ list_pattern = re.compile(r'^\((?P<flags>[^\)]*)\) '
 
 status_pattern = re.compile(r'^(?P<name>[^(]+)\((?P<status>[\w\d\s]*)\)$')
 
-searchuid_pattern = re.compile(r'(?P<index>\d+)\s+\(UID\s*(?P<uid>\d+)'
-                               r'\s+FLAGS \((?P<flags>[^\)]*)\)\)$')
+uid_pattern = re.compile(r'(?P<index>\d+)\s+\(UID\s*(?P<uid>\d+)\)$')
+
+uid_and_flags_pattern = re.compile(r'(?P<index>\d+)\s+\(UID\s*(?P<uid>\d+)'
+                                   r'\s+FLAGS \((?P<flags>[^\)]*)\)\)$')
 
 class ImapWorkerError(Exception):
     """ Error encountered while talking to IMAP server. """
@@ -98,6 +100,14 @@ class ImapWorker(object):
         bits = m.group('status').strip().split()
         mailbox_status = dict(zip(bits[0::2], map(int, bits[1::2])))
 
+        if mailbox_status['MESSAGES']:
+            data = self.conn.fetch('1:*', '(UID)')
+            for item in data:
+                m = uid_pattern.match(item)
+                assert m is not None
+                (uid, index) = (int(m.group('uid')), int(m.group('index')))
+                self.message_index[uid] = index
+
         return mailbox_status
 
     def get_messages_in_folder(self, folder_name, readonly=True):
@@ -111,14 +121,13 @@ class ImapWorker(object):
         if mbox_status['MESSAGES']:
             data = self.conn.fetch('1:*', '(UID FLAGS)')
             for item in data:
-                m = searchuid_pattern.match(item)
+                m = uid_and_flags_pattern.match(item)
                 assert m is not None
                 (uid, index) = (int(m.group('uid')), int(m.group('index')))
                 message_data[uid] = {
                     'flags': set(m.group('flags').split()),
                     'index': index,
                 }
-                self.message_index[uid] = index
 
         return mbox_status, message_data
 
