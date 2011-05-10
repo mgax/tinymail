@@ -17,6 +17,9 @@ def _account_for_test(config=None, db=None):
         db = MagicMock()
     return Account(config, db)
 
+msg13_data = (13, set([r'\Seen']), "Subject: test message")
+msg22_data = (22, set([]), "Subject: read me")
+
 class AccountTest(unittest.TestCase):
     def test_list_folders(self):
         account = _account_for_test()
@@ -149,7 +152,6 @@ class AccountUpdateTest(unittest.TestCase):
 
     def test_trust_uidvalidity(self):
         account = _account_for_test()
-        msg13_data = (13, set([r'\Seen']), "Subject: test message")
         msg13_bis_data = (13, set([r'\Seen']), "Subject: another message")
         with mock_worker(fol1={13: msg13_data}):
             account.perform_update()
@@ -163,7 +165,6 @@ class AccountUpdateTest(unittest.TestCase):
 
     def test_uidvalidity_changed(self):
         account = _account_for_test()
-        msg13_data = (13, set([r'\Seen']), "Subject: test message")
         msg13_bis_data = (13, set([r'\Seen']), "Subject: another message")
         with mock_worker(fol1={13: msg13_data, 'UIDVALIDITY': 1234}):
             account.perform_update()
@@ -178,7 +179,6 @@ class AccountUpdateTest(unittest.TestCase):
     def test_message_flags_changed(self):
         from tinymail.account import folder_updated
         account = _account_for_test()
-        msg13_data = (13, set([r'\Seen']), "Subject: test message")
         msg13_bis_data = (13, set([r'\Flagged']), "Subject: test message")
         with mock_worker(fol1={13: msg13_data}):
             account.perform_update()
@@ -268,7 +268,6 @@ class PersistenceTest(unittest.TestCase):
     def test_uidvalidity(self):
         db = mock_db()
         account = _account_for_test(db=db)
-        msg13_data = (13, set([r'\Seen']), "Subject: test message")
         with mock_worker(fol1={13: msg13_data, 'UIDVALIDITY': 1234}):
             account.perform_update()
 
@@ -279,7 +278,6 @@ class PersistenceTest(unittest.TestCase):
     def test_uidvalidity_changed(self):
         db = mock_db()
         account = _account_for_test(db=db)
-        msg13_data = (13, set([r'\Seen']), "Subject: test message")
         msg13_bis_data = (13, set([r'\Seen']), "Subject: another message")
         with mock_worker(fol1={13: msg13_data, 'UIDVALIDITY': 1234}):
             account.perform_update()
@@ -295,7 +293,6 @@ class PersistenceTest(unittest.TestCase):
     def test_message_flags_changed(self):
         db = mock_db()
         account = _account_for_test(db=db)
-        msg13_data = (13, set([r'\Seen']), "Subject: test message")
         msg13_bis_data = (13, set([r'\Flagged']), "Subject: test message")
         with mock_worker(fol1={13: msg13_data}):
             account.perform_update()
@@ -367,9 +364,53 @@ class ModifyFlagsTest(unittest.TestCase):
 
     def test_close_mailbox_after_changing_flags(self):
         account = _account_for_test()
-        msg13_data = (13, set([r'\Seen']), "Subject: test message")
         with mock_worker(fol1={13: msg13_data}) as worker:
             account.perform_update()
             worker.close_mailbox.reset_mock()
             account.get_folder('fol1').change_flag([13], 'add', '\\Flagged')
             worker.close_mailbox.assert_called_once_with()
+
+class MessagesCopyTest(unittest.TestCase):
+
+    def setUp(self):
+        self.db = mock_db()
+        self.account = _account_for_test(db=self.db)
+        self.imap_data = {'fol1': {13: msg13_data}, 'fol2': {22: msg22_data}}
+        with mock_worker(**self.imap_data):
+            self.account.perform_update()
+        self.fol1 = self.account.get_folder('fol1')
+        self.fol2 = self.account.get_folder('fol2')
+
+    def test_copy_one_message(self):
+        with mock_worker(**self.imap_data) as worker:
+            self.fol1.copy_messages([13], self.fol2)
+
+        worker.copy_messages.assert_called_once_with([13], 'fol2')
+
+    def test_local_data_after_copy(self):
+        with mock_worker(**self.imap_data) as worker:
+            self.fol1.copy_messages([13], self.fol2)
+
+        fol2_msgs = list(self.fol2.list_messages())
+        self.assertEqual(len(fol2_msgs), 2)
+        uid = max(self.fol2._messages)
+        msg = self.fol2.get_message(uid)
+        self.assertEqual(msg.flags, msg13_data[1])
+        self.assertEqual(msg.raw_headers, msg13_data[2])
+
+        accountB = _account_for_test(db=self.db)
+        fol2B = accountB.get_folder('fol2')
+        self.assertEqual(len(list(fol2B.list_messages())), 2)
+        msgB = fol2B.get_message(uid)
+        self.assertEqual(msgB.flags, msg13_data[1])
+        self.assertEqual(msgB.raw_headers, msg13_data[2])
+
+    def test_copy_event(self):
+        from tinymail.account import folder_updated
+        with mock_worker(**self.imap_data) as worker:
+            with listen_for(folder_updated) as caught_signals:
+                self.fol1.copy_messages([13], self.fol2)
+
+        uid = max(self.fol2._messages.keys())
+        event_data = {'added': [uid], 'removed': [], 'flags_changed': []}
+        self.assertEqual(caught_signals, [(self.fol2, event_data)])

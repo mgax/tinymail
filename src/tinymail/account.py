@@ -81,12 +81,12 @@ class Folder(object):
     def change_flag(self, uid_list, operation, flag):
         FolderChangeFlagJob(self, uid_list, operation, flag).start()
 
-    def copy_messages(self, uid_list, target_folder):
-        if target_folder.account is not self.account:
+    def copy_messages(self, uid_list, dst_folder):
+        if dst_folder.account is not self.account:
             raise NotImplementedError("Copying messages accross accounts "
                                       "is not implemented yet.")
 
-        raise NotImplementedError # TODO
+        FolderCopyMessagesJob(self, uid_list, dst_folder).start()
 
 class Message(object):
     def __init__(self, folder, uid, flags, raw_headers):
@@ -310,5 +310,60 @@ class FolderChangeFlagJob(AsyncJob):
             'flags_changed': self.uid_list,
         }
         folder_updated.send(self.folder, **event_data)
+
+        yield worker.close_mailbox()
+
+
+class FolderCopyMessagesJob(AsyncJob):
+    def __init__(self, src_folder, src_uids, dst_folder):
+        self.src_folder = src_folder
+        self.src_uids = src_uids
+        self.dst_folder = dst_folder
+
+    @_o
+    def do_stuff(self):
+        wm = self.src_folder.account.worker_manager
+        worker = yield wm.get_worker()
+
+        try:
+            yield self.copy_messages(worker)
+
+        finally:
+            yield wm.hand_back_worker(worker)
+
+    @_o
+    def copy_messages(self, worker):
+        log.debug("Copying messages %r from %r to %r",
+                  self.src_uids, self.src_folder, self.dst_folder)
+
+        yield worker.select_mailbox(self.src_folder.name)
+        result = yield worker.copy_messages(self.src_uids,
+                                              self.dst_folder.name)
+        assert set(result['uid_map']) == set(self.src_uids)
+        # TODO check UIDVALIDITY
+
+        db = self.dst_folder.account._db
+        with db.transaction():
+            db_account = db.get_account(self.dst_folder.account.name)
+            dst_db_folder = db_account.get_folder(self.dst_folder.name)
+
+            sql_msgs = []
+            for src_uid, dst_uid in result['uid_map'].iteritems():
+                src_message = self.src_folder.get_message(src_uid)
+                flags = set(src_message.flags)
+                raw_headers = src_message.raw_headers
+
+                sql_msgs.append((dst_uid, flags, raw_headers))
+                dst_message = Message(self.dst_folder, dst_uid,
+                                      flags, raw_headers)
+                self.dst_folder._messages[dst_uid] = dst_message
+            dst_db_folder.bulk_add_messages(sql_msgs)
+
+        event_data = {
+            'added': sorted(result['uid_map'].values()),
+            'removed': [],
+            'flags_changed': [],
+        }
+        folder_updated.send(self.dst_folder, **event_data)
 
         yield worker.close_mailbox()

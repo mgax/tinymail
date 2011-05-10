@@ -57,9 +57,27 @@ def mock_worker(**imap_spec):
         return defer(message_headers)
     worker.get_message_headers.side_effect = get_message_headers
 
+    def copy_messages(src_uids, dst_folder_name):
+        src_folder = folders[state['name']]
+        dst_folder = folders[dst_folder_name]
+        next_uid = max([0] + dst_folder['index'].keys()) + 1
+        next_index = max([0] + dst_folder['index'].values()) + 1
+        uid_map = {}
+        for uid in src_uids:
+            uid_map[uid] = next_uid
+            i = src_folder['index'][uid]
+            dst_folder['flags'][next_uid] = src_folder['flags'][uid]
+            dst_folder['index'][next_uid] = next_index
+            dst_folder['headers'][next_index] = src_folder['headers'][i]
+            next_uid += 1; next_index += 1
+        return defer({'UIDVALIDITY': dst_folder['uidvalidity'],
+                      'uid_map': uid_map})
+    worker.copy_messages.side_effect = copy_messages
+
     worker.change_flag.return_value = defer(None)
     worker.close_mailbox.return_value = defer(None)
     worker.disconnect.return_value = defer(None)
+    worker.copy_messages.return_value = defer(None)
 
     with patch('tinymail.account._new_imap_worker', Mock(return_value=worker)):
         yield worker
