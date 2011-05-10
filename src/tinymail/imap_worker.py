@@ -117,14 +117,16 @@ class ImapWorker(object):
 
         log.debug("get_message_flags")
 
-        data = self.conn.fetch('1:*', '(FLAGS)')
-
         flags = {}
-        for item in data:
-            m = flags_pattern.match(item)
-            assert m is not None
-            uid = self.message_uid[int(m.group('index'))]
-            flags[uid] = m.group('flags').split()
+
+        if self.message_uid:
+            # don't FETCH if the mailbox is empty
+            data = self.conn.fetch('1:*', '(FLAGS)')
+            for item in data:
+                m = flags_pattern.match(item)
+                assert m is not None
+                uid = self.message_uid[int(m.group('index'))]
+                flags[uid] = m.group('flags').split()
 
         return flags
 

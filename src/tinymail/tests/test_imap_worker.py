@@ -105,6 +105,15 @@ class ImapWorkerTest(unittest.TestCase):
         imap_conn.fetch.assert_called_once_with('1:*', '(FLAGS)')
         self.assertEqual(message_flags, _flags)
 
+    def test_get_message_flags_empty_mailbox(self):
+        worker, imap_conn = worker_with_fake_imap()
+        worker.message_uid = {}
+
+        message_flags = worker.get_message_flags()
+
+        self.assertEqual(message_flags, {})
+        self.assertFalse(imap_conn.fetch.called)
+
     def test_get_message_headers(self):
         worker, imap_conn = worker_with_fake_imap()
         worker.message_index = {31: 1, 32: 2, 35: 5}
