@@ -15,6 +15,7 @@ class ImapWorkerTest(unittest.TestCase):
         mock_conn = Mock(spec=imaplib.IMAP4)
         mock_imaplib.IMAP4_SSL.return_value = mock_conn
         mock_conn.login.return_value = ('OK', [])
+        mock_conn.capability.return_value = ('OK', ["A B C"])
 
         from tinymail.imap_worker import ImapWorker
         worker = ImapWorker()
@@ -22,6 +23,7 @@ class ImapWorkerTest(unittest.TestCase):
 
         mock_imaplib.IMAP4_SSL.assert_called_once_with('test_host')
         mock_conn.login.assert_called_once_with('test_login', 'test_pass')
+        self.assertEqual(worker.capabilities, ["A", "B", "C"])
 
     def test_get_mailbox_names(self):
         worker, imap_conn = worker_with_fake_imap()

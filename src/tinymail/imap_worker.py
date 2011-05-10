@@ -93,6 +93,8 @@ class ImapWorker(object):
     def connect(self, host, login_name, login_pass):
         log.debug("connecting to %r as %r", host, login_name)
         self.conn = ConnectionErrorWrapper(imaplib.IMAP4_SSL(host))
+        [caps] = self.conn.capability()
+        self.capabilities = caps.split()
         self.conn.login(login_name, login_pass)
 
     def disconnect(self):
