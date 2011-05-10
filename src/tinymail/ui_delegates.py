@@ -11,6 +11,8 @@ from blinker import Signal
 from tinymail.account import Account
 from tinymail.account import account_opened, account_updated, folder_updated
 
+log = logging.getLogger(__name__)
+
 folder_selected = Signal()
 message_selected = Signal()
 
@@ -132,6 +134,41 @@ class MailboxesController(NSObject):
 
         folder_selected.send(self, folder=new_value)
 
+    def outlineView_validateDrop_proposedItem_proposedChildIndex_(self,
+            outline_view, drag_info, item, child_index):
+
+        if child_index != -1:
+            # we don't want anything dropped into the outline itself
+            return AppKit.NSDragOperationNone
+
+        if isinstance(item, MailboxesAccountItem):
+            return AppKit.NSDragOperationNone
+
+        try:
+            folder_controller = drag_info.draggingSource().delegate()
+            source_folder = folder_controller.folder
+            target_folder = item.folder
+            if source_folder != target_folder:
+                return AppKit.NSDragOperationCopy | AppKit.NSDragOperationMove
+        except:
+            pass
+
+        return AppKit.NSDragOperationNone
+
+
+    def outlineView_acceptDrop_item_childIndex_(self,
+            outline_view, drag_info, item, child_index):
+        try:
+            pasteboard = drag_info.draggingPasteboard()
+            pasteboard_data = pasteboard.stringForType_("TinyMailMessages")
+            uid_list = [int(uid) for uid in pasteboard_data.split(',')]
+            folder_controller = drag_info.draggingSource().delegate()
+            folder_controller.copy_messages_to_folder(uid_list, item.folder)
+            return True
+        except:
+            log.exception("Drag-and-drop failed")
+            return False
+
 
 class MailboxesAccountItem(NSObject):
     def init(self):
@@ -222,6 +259,9 @@ class FolderController(NSObject):
         else:
             self.folder.change_flag(flagged, 'del', flag)
 
+    def copy_messages_to_folder(self, message_uid_list, target_folder):
+        self.folder.copy_messages(message_uid_list, target_folder)
+
     def numberOfRowsInTableView_(self, table_view):
         return len(self.messages)
 
@@ -263,6 +303,13 @@ class FolderController(NSObject):
         new_value = (None if row == -1 else self.messages[row])
 
         message_selected.send(self, message=new_value)
+
+    def tableView_writeRowsWithIndexes_toPasteboard_(self,
+            table_view, indices, pasteboard):
+        pasteboard_data = ','.join(str(self.messages[idx].uid) for idx in
+                                   array_from_index_set(indices))
+        pasteboard.setString_forType_(pasteboard_data, "TinyMailMessages")
+        return True
 
 
 class MessageController(NSObject):
@@ -385,6 +432,7 @@ class TinymailAppDelegate(NSObject):
         return self
 
     def setFolderController_(self, fc):
+        # TODO abort any dragging in progress
         self.controllers['folder'].setView_(None)
         self.controllers['folder'] = fc
         self.controllers['folder'].setView_(self.messagesPane)
@@ -424,6 +472,7 @@ class TinymailAppDelegate(NSObject):
 
     def set_up_ui(self):
         self.controllers['mailboxes'].setView_(self.foldersPane)
+        self.foldersPane.registerForDraggedTypes_(["TinyMailMessages"])
 
         def handle_account_opened(account):
             self.controllers['mailboxes'].add_account(account)

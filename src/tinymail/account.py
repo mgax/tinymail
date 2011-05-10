@@ -81,6 +81,13 @@ class Folder(object):
     def change_flag(self, uid_list, operation, flag):
         FolderChangeFlagJob(self, uid_list, operation, flag).start()
 
+    def copy_messages(self, uid_list, target_folder):
+        if target_folder.account is not self.account:
+            raise NotImplementedError("Copying messages accross accounts "
+                                      "is not implemented yet.")
+
+        raise NotImplementedError # TODO
+
 class Message(object):
     def __init__(self, folder, uid, flags, raw_headers):
         self.folder = folder

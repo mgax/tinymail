@@ -158,3 +158,53 @@ class MessageListingTest(AsyncTestCase):
         folder_controller.selected_toggle_flag('\\Flagged')
 
         fol1.change_flag.assert_called_once_with([6, 12], 'del', '\\Flagged')
+
+
+class MessageDraggingTest(AsyncTestCase):
+
+    def setUp(self):
+        self.imap_data = {}
+        self.imap_data['fol1'] = {
+            6: (6, [r'\Seen', r'\Flagged'], "From: me\nSubject: test message"),
+            8: (8, [r'\Seen'], "From: her\nSubject: another test message"),
+            12: (12, [], "From: him\nSubject: third one"),
+        }
+        self.imap_data['fol2'] = {}
+        self.account = account_with_folders(**self.imap_data)
+        fol1 = self.account.get_folder('fol1')
+        self.messages_pane = setup_folder_controller(fol1)
+        get_app_delegate().controllers['mailboxes'].add_account(self.account)
+        self.folders_pane = get_app_delegate().foldersPane
+
+    def tearDown(self):
+        get_app_delegate().controllers['mailboxes'].remove_account(self.account)
+        from tinymail.account import Folder
+        setup_folder_controller(Folder(None, 'f'))
+
+    def test_full_drag(self):
+        import AppKit
+        pasteboard = AppKit.NSPasteboard.pasteboardWithName_("testing")
+
+        fol1 = self.account.get_folder('fol1')
+        fol2 = self.account.get_folder('fol2')
+        fol1.copy_messages = Mock()
+
+        fc = self.messages_pane.delegate()
+        fc.tableView_writeRowsWithIndexes_toPasteboard_(
+            None, objc_index_set([0, 2]), pasteboard)
+
+        mock_drag_info = Mock()
+        mock_drag_info.draggingPasteboard.return_value = pasteboard
+        mock_drag_info.draggingSource.return_value = self.messages_pane
+
+        mc = self.folders_pane.delegate()
+        target_item = mc.account_items[0].folder_items[1]
+        ops = mc.outlineView_validateDrop_proposedItem_proposedChildIndex_(
+            None, mock_drag_info, target_item, -1)
+        _copy_or_move = AppKit.NSDragOperationCopy | AppKit.NSDragOperationMove
+        self.assertEqual(ops, _copy_or_move)
+
+        mc.outlineView_acceptDrop_item_childIndex_(
+            None, mock_drag_info, target_item, -1)
+
+        fol1.copy_messages.assert_called_once_with([6, 12], fol2)
