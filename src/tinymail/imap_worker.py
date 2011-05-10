@@ -16,6 +16,11 @@ uid_pattern = re.compile(r'(?P<index>\d+)\s+\(UID\s*(?P<uid>\d+)\)$')
 flags_pattern = re.compile(r'(?P<index>\d+)\s+\(FLAGS\s+'
                            r'\((?P<flags>[^\)]*)\)\)$')
 
+copyuid_pattern = re.compile(r'^\[COPYUID (?P<uidvalidity>\d+) '
+                            r'(?P<src_uid>[\d\:,]+) '
+                            r'(?P<dst_uid>[\d\:,]+)'
+                            r'\] Copy completed\.$')
+
 def array_from_imap_str(imap_str):
     out = []
     for chunk in imap_str.split(','):
@@ -218,7 +223,14 @@ class ImapWorker(object):
         message_indices = [self.message_index[uid] for uid in uid_list]
         message_indices.sort()
         msgs = ','.join(map(str, message_indices))
+
         data = self.conn.copy(msgs, target_mailbox_name)
+
+        m = copyuid_pattern.match(data[0])
+        assert m is not None
+        uid_map = dict(zip(array_from_imap_str(m.group('src_uid')),
+                           array_from_imap_str(m.group('dst_uid'))))
+        return {'UIDVALIDITY': int(m.group('uidvalidity')), 'uid_map': uid_map}
 
     def close_mailbox(self):
         log.debug("close_mailbox")

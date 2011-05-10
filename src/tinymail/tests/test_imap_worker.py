@@ -165,11 +165,14 @@ class ImapWorkerTest(unittest.TestCase):
     def test_copy_messages(self):
         worker, imap_conn = worker_with_fake_imap()
         worker.message_index = {31: 1, 32: 2, 35: 5}
-        imap_conn.copy.return_value = ('OK', [])
+        _copy_msg = '[COPYUID 1234 31,35 67:68] Copy completed.'
+        imap_conn.copy.return_value = ('OK', [_copy_msg])
 
-        worker.copy_messages([31, 35], 'someplace-else')
+        result = worker.copy_messages([31, 35], 'someplace-else')
 
         imap_conn.copy.assert_called_once_with('1,5', 'someplace-else')
+        self.assertEqual(result, {'UIDVALIDITY': 1234,
+                                  'uid_map': {31:67, 35:68}})
 
     def test_close(self):
         worker, imap_conn = worker_with_fake_imap()
