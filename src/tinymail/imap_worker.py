@@ -16,6 +16,38 @@ uid_pattern = re.compile(r'(?P<index>\d+)\s+\(UID\s*(?P<uid>\d+)\)$')
 flags_pattern = re.compile(r'(?P<index>\d+)\s+\(FLAGS\s+'
                            r'\((?P<flags>[^\)]*)\)\)$')
 
+def array_from_imap_str(imap_str):
+    out = []
+    for chunk in imap_str.split(','):
+        if ':' in chunk:
+            start, end = chunk.split(':')
+            out.extend(xrange(int(start), int(end)+1))
+        else:
+            out.append(int(chunk))
+    return out
+
+def imap_str_from_sequence(data_src):
+    out = ''
+    crt = start = None
+
+    for value in data_src:
+        if value - 1 == crt:
+            crt = value
+        elif value - 1 > crt:
+            if crt is not None:
+                if crt > start:
+                    out += ':' + str(crt)
+                out += ','
+            start = crt = value
+            out += str(start)
+        else:
+            raise ValueError("Input sequence must be ascending")
+    else:
+        if crt > start:
+            out += ':' + str(crt)
+
+    return out
+
 class ImapWorkerError(Exception):
     """ Error encountered while talking to IMAP server. """
 

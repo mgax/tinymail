@@ -33,6 +33,19 @@ def objc_callback(func):
     return wrapper
 
 
+def array_from_index_set(index_set):
+    """
+    Convert an NSIndexSet to an NSArray. Allocates a (potentially) large
+    array in the process.
+    """
+    if index_set.count() == 0:
+        return []
+
+    size = index_set.lastIndex()
+    temp_array = AppKit.NSArray.arrayWithArray_(range(size + 1))
+    return temp_array.objectsAtIndexes_(index_set)
+
+
 class MailboxesController(NSObject):
     def init(self):
         self = super(MailboxesController, self).init()
@@ -192,10 +205,8 @@ class FolderController(NSObject):
 
     def get_selected_messages(self):
         selected = self.table_view.selectedRowIndexes()
-        # TODO there has to be a better way to get selected messages
-        for idx in xrange(len(self.messages)):
-            if selected.containsIndex_(idx):
-                yield self.messages[idx]
+        for idx in array_from_index_set(selected):
+            yield self.messages[idx]
 
     def selected_toggle_flag(self, flag):
         flagged = []
