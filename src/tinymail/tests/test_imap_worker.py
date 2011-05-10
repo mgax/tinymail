@@ -162,6 +162,15 @@ class ImapWorkerTest(unittest.TestCase):
 
         imap_conn.store.assert_called_once_with('1,2,5', '-FLAGS', '\\Flagged')
 
+    def test_copy_messages(self):
+        worker, imap_conn = worker_with_fake_imap()
+        worker.message_index = {31: 1, 32: 2, 35: 5}
+        imap_conn.copy.return_value = ('OK', [])
+
+        worker.copy_messages([31, 35], 'someplace-else')
+
+        imap_conn.copy.assert_called_once_with('1,5', 'someplace-else')
+
     def test_close(self):
         worker, imap_conn = worker_with_fake_imap()
         imap_conn.close.return_value = ('OK', [])

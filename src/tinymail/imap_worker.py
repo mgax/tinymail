@@ -211,6 +211,15 @@ class ImapWorker(object):
         data = self.conn.store(msgs, OP_MAP[operation], flag)
         # TODO "data" tells us the new flags for all messages
 
+    def copy_messages(self, uid_list, target_mailbox_name):
+        target_mailbox_name = target_mailbox_name.encode('ascii')
+        log.debug("copy_messages %r to %r", uid_list, target_mailbox_name)
+
+        message_indices = [self.message_index[uid] for uid in uid_list]
+        message_indices.sort()
+        msgs = ','.join(map(str, message_indices))
+        data = self.conn.copy(msgs, target_mailbox_name)
+
     def close_mailbox(self):
         log.debug("close_mailbox")
 
